@@ -13,6 +13,9 @@ class SheetWriter {
 
   /**
    * Lit les chemins JSON définis en ligne 1 (en-têtes).
+   * Les cellules vides sont ignorées : si la ligne 1 contient ["id", "", "name"],
+   * seuls ["id", "name"] sont retournés et les données s'écriront en colonnes 1 et 2.
+   * Les colonnes vides au milieu ne sont donc pas préservées comme séparateurs visuels.
    * @returns {string[]}
    */
   getHeaderPaths() {
@@ -25,13 +28,16 @@ class SheetWriter {
 
   /**
    * Efface les données de la ligne 2 jusqu'à la dernière ligne (conserve les en-têtes).
-   * @param {number} columnCount
+   * Utilise le max entre le nombre de colonnes actuel et celui de la feuille pour
+   * nettoyer également les colonnes orphelines d'une extraction précédente plus large.
+   * @param {number} columnCount - nombre de colonnes de l'extraction courante
    */
   clearPreviousData(columnCount) {
     const lastRow = this.sheet.getLastRow();
-    if (lastRow <= 1 || columnCount <= 0) return;
+    const effectiveColumns = Math.max(columnCount, this.sheet.getLastColumn());
+    if (lastRow <= 1 || effectiveColumns <= 0) return;
 
-    this.sheet.getRange(2, 1, lastRow - 1, columnCount).clearContent();
+    this.sheet.getRange(2, 1, lastRow - 1, effectiveColumns).clearContent();
   }
 
   /**

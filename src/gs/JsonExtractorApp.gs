@@ -86,6 +86,23 @@ class JsonExtractorApp {
     );
   }
 
+  configureChunkSize() {
+    const current = this.config.getChunkSize();
+    const response = this.ui.prompt(
+      'Taille des lots d'écriture',
+      `Nombre de lignes écrites par appel API Sheets.\nValeur actuelle : ${current}\nRecommandé : entre 200 et 2000.`,
+      this.ui.ButtonSet.OK_CANCEL
+    );
+    if (response.getSelectedButton() !== this.ui.Button.OK) return;
+    const value = Number(response.getResponseText().trim());
+    if (!value || value <= 0) {
+      this.ui.alert('❌ Valeur invalide', 'Entrez un entier positif.', this.ui.ButtonSet.OK);
+      return;
+    }
+    this.config.setChunkSize(value);
+    this.ui.alert('✅ Enregistré', `Taille des lots : ${value}`, this.ui.ButtonSet.OK);
+  }
+
   runExtraction() {
     const sheet = this.spreadsheet.getActiveSheet();
 
@@ -101,11 +118,12 @@ class JsonExtractorApp {
     }
 
     const startedAt = new Date();
-    let fileId = this.config.getFileId();
-    let rootPath = this.config.getRootPath();
-    let fileName = '';
+    let fileId, rootPath, fileName = '';
 
     try {
+      fileId = this.config.getFileId();
+      rootPath = this.config.getRootPath();
+
       if (!fileId) {
         this.ui.alert('⚠️ Configuration', 'Veuillez d'abord configurer la source JSON.', this.ui.ButtonSet.OK);
         return;
@@ -119,6 +137,16 @@ class JsonExtractorApp {
         return;
       }
 
+      if (sheet.getLastRow() > 1) {
+        const confirm = this.ui.alert(
+          '⚠️ Données existantes',
+          'L'onglet contient déjà des données. L'extraction va les remplacer. Continuer ?',
+          this.ui.ButtonSet.OK_CANCEL
+        );
+        if (confirm !== this.ui.Button.OK) return;
+      }
+
+      this.spreadsheet.toast('⏳ Lecture du fichier JSON…', 'Extracteur JSON', -1);
       const file = DriveApp.getFileById(fileId);
       fileName = file.getName();
       const jsonData = JSON.parse(file.getBlob().getDataAsString('UTF-8'));
@@ -131,9 +159,11 @@ class JsonExtractorApp {
         return;
       }
 
+      this.spreadsheet.toast(`⏳ Construction de ${dataArray.length} lignes…`, 'Extracteur JSON', -1);
       const rows = this._buildRows(dataArray, paths);
 
       if (rows.length > 0) {
+        this.spreadsheet.toast('⏳ Écriture dans la feuille…', 'Extracteur JSON', -1);
         writer.clearPreviousData(paths.length);
         writer.writeRows(rows, this.config.getChunkSize());
         writer.autofitColumns(paths.length);
@@ -151,6 +181,8 @@ class JsonExtractorApp {
         });
 
         this.spreadsheet.toast(`✅ Extraction réussie : ${rows.length} lignes.`, 'Extracteur JSON', 5);
+      } else {
+        this.ui.alert('⚠️ Aucune ligne', 'Les chemins définis en ligne 1 n'ont retourné aucune valeur.', this.ui.ButtonSet.OK);
       }
     } catch (e) {
       this.logger.log({
