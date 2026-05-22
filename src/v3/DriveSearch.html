@@ -16,11 +16,36 @@
     _onInput: function (value) {
       clearTimeout(DriveSearch._timer);
       DriveSearch._hideDropdown();
-      if (value.trim().length < 2) return;
-      // Déclenche la recherche après 300 ms d'inactivité (debounce)
+      const trimmed = value.trim();
+      if (trimmed.length < 2) return;
+      // URL Drive ou ID collé → résolution directe (pas de recherche par nom).
+      if (DriveSearch._looksLikeDriveRef(trimmed)) {
+        DriveSearch._resolveUrl(trimmed);
+        return;
+      }
+      // Sinon : recherche par nom après 300 ms d'inactivité (debounce).
       DriveSearch._timer = setTimeout(function () {
-        DriveSearch._search(value.trim());
+        DriveSearch._search(trimmed);
       }, 300);
+    },
+
+    /** Détecte une URL Drive/Docs ou un ID brut (segment de 25+ caractères). */
+    _looksLikeDriveRef: function (value) {
+      return /drive\.google\.com|docs\.google\.com/i.test(value) || /[-\w]{25,}/.test(value);
+    },
+
+    _resolveUrl: function (value) {
+      DriveSearch._setSpinner(true);
+      google.script.run
+        .withSuccessHandler(function (file) {
+          DriveSearch._setSpinner(false);
+          DriveSearch._select(file);
+        })
+        .withFailureHandler(function (error) {
+          DriveSearch._setSpinner(false);
+          DriveSearch._showMessage(error.message || 'Impossible de résoudre ce lien.');
+        })
+        .resolveDriveFile(value);
     },
 
     _search: function (term) {

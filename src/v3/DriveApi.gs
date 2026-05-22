@@ -63,3 +63,39 @@ function searchDriveSheetsFiles(term) {
     `mimeType = "application/vnd.google-apps.spreadsheet" and trashed = false`;
   return _runDriveQuery(query);
 }
+
+/**
+ * Extrait un ID Drive depuis une URL complète ou un ID brut.
+ * Tente le pattern /d/<ID> des URLs Drive, sinon le premier segment de 25+ caractères.
+ * Logique reprise de la v2 (ConfigService.extractDriveFileId).
+ * @param {string} input - URL Drive ou ID brut
+ * @returns {string|null} ID extrait, ou null si introuvable
+ */
+function _extractDriveFileId(input) {
+  if (!input) return null;
+  const normalized = String(input).trim();
+  const driveUrlMatch = normalized.match(/\/d\/([-\w]{25,})/);
+  if (driveUrlMatch) return driveUrlMatch[1];
+  const fallbackMatch = normalized.match(/[-\w]{25,}/);
+  return fallbackMatch ? fallbackMatch[0] : null;
+}
+
+/**
+ * Résout une URL Drive (ou un ID brut) en fichier accessible.
+ * Appelée via google.script.run quand l'utilisateur colle un lien dans le champ source.
+ * @param {string} urlOrId - URL complète ou ID du fichier
+ * @returns {{ id: string, name: string }} Fichier résolu
+ * @throws {Error} Si l'entrée n'est pas une URL/ID valide ou le fichier est inaccessible
+ */
+function resolveDriveFile(urlOrId) {
+  const id = _extractDriveFileId(urlOrId);
+  if (!id) {
+    throw new Error('Lien ou identifiant invalide. Collez l\'URL complète du fichier, ou son identifiant.');
+  }
+  try {
+    const file = DriveApp.getFileById(id);
+    return { id: file.getId(), name: file.getName() };
+  } catch (e) {
+    throw new Error('Fichier introuvable ou inaccessible. Vérifiez le lien et vos droits d\'accès.');
+  }
+}
