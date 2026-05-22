@@ -11,8 +11,9 @@ function onOpen() {
     .createMenu('🚀 Extracteur JSON')
     .addItem('1. Configurer la source JSON', 'configurerSourceJson')
     .addItem('2. Configurer le chemin racine', 'configurerCheminRacine')
+    .addItem('3. Configurer la taille des lots', 'configurerTailleLots')
     .addSeparator()
-    .addItem('3. Extraire les données', 'executerExtractionJson')
+    .addItem('4. Extraire les données', 'executerExtractionJson')
     .addSeparator()
     .addItem('Voir la configuration actuelle', 'afficherConfiguration')
     .addToUi();
@@ -26,6 +27,11 @@ function configurerSourceJson() {
 function configurerCheminRacine() {
   const app = new JsonExtractorApp();
   app.configureRootPath();
+}
+
+function configurerTailleLots() {
+  const app = new JsonExtractorApp();
+  app.configureChunkSize();
 }
 
 function executerExtractionJson() {

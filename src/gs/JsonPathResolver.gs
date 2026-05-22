@@ -52,7 +52,9 @@ class JsonPathResolver {
   /**
    * Normalise une valeur pour l'écriture en cellule Sheets.
    * - null/undefined → ''
-   * - Dates ISO 8601 → objet Date (affiché nativement par Sheets)
+   * - Dates ISO 8601 avec composante heure → objet Date (affiché nativement par Sheets)
+   * - Dates ISO sans heure (ex: "2024-01-15") → laissées en string pour éviter le
+   *   décalage UTC qui afficherait le jour précédent pour les timezones UTC+N
    * - Objets/tableaux → JSON.stringify
    * @param {*} value
    * @returns {string|Date|number|boolean}
@@ -63,7 +65,7 @@ class JsonPathResolver {
 
     if (typeof value === 'string') {
       const isoDateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?$/;
-      if (isoDateRegex.test(value)) {
+      if (isoDateRegex.test(value) && value.includes('T')) {
         const parsedDate = new Date(value);
         if (!isNaN(parsedDate.getTime())) return parsedDate;
       }
@@ -74,6 +76,9 @@ class JsonPathResolver {
 
   /**
    * Résolution avec fallback auto-découverte, puis normalisation.
+   * Le fallback deepSearch ne s'applique que pour les chemins sans point (token simple) :
+   * pour un chemin composé comme "address.city", si resolve échoue, deepSearch rechercherait
+   * la clé littérale "address.city" (avec le point) — ce qui n'existe jamais en pratique.
    * @param {Object} obj
    * @param {string} path
    * @returns {string|Date|number|boolean}
@@ -83,7 +88,7 @@ class JsonPathResolver {
 
     let value = this.resolve(obj, path);
 
-    if (value === undefined || value === null) {
+    if ((value === undefined || value === null) && !path.includes('.')) {
       value = this.deepSearch(obj, path);
     }
 

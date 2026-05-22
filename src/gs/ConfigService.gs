@@ -44,6 +44,14 @@ class ConfigService {
     return value > 0 ? value : this.defaults.CHUNK_SIZE;
   }
 
+  /** @param {number} size */
+  setChunkSize(size) {
+    const parsed = Number(size);
+    if (parsed > 0) {
+      this.properties.setProperty(this.keys.CHUNK_SIZE, String(parsed));
+    }
+  }
+
   /** @returns {{ fileId: string, rootPath: string, chunkSize: number }} */
   getCurrentConfiguration() {
     return {
@@ -55,12 +63,17 @@ class ConfigService {
 
   /**
    * Extrait un ID Drive depuis une URL complète ou un ID brut.
+   * Tente d'abord le pattern /d/<ID> présent dans les URLs Drive standards,
+   * puis fall back sur le premier segment alphanumérique de 25+ caractères.
    * @param {string} input
    * @returns {string|null}
    */
   extractDriveFileId(input) {
     if (!input) return null;
-    const match = String(input).trim().match(/[-\w]{25,}/);
-    return match ? match[0] : null;
+    const normalized = String(input).trim();
+    const driveUrlMatch = normalized.match(/\/d\/([-\w]{25,})/);
+    if (driveUrlMatch) return driveUrlMatch[1];
+    const fallbackMatch = normalized.match(/[-\w]{25,}/);
+    return fallbackMatch ? fallbackMatch[0] : null;
   }
 }
