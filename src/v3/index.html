@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON → Sheets</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Google Sans', Roboto, Arial, sans-serif;
+      background: #f8f9fa;
+      color: #202124;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+
+    .app-container { max-width: 680px; margin: 0 auto; }
+
+    /* ── Header ── */
+    .app-header { text-align: center; margin-bottom: 36px; }
+    .app-header h1 { font-size: 26px; font-weight: 400; color: #202124; }
+    .app-header p  { color: #5f6368; margin-top: 8px; font-size: 15px; }
+
+    /* ── Indicateur d'étapes ── */
+    .steps-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 32px;
+    }
+
+    .step-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-width: 72px;
+    }
+
+    .step-circle {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background .2s, color .2s;
+    }
+
+    .step-label {
+      font-size: 12px;
+      font-weight: 500;
+      transition: color .2s;
+    }
+
+    /* État : actif */
+    .step-item.active .step-circle { background: #1a73e8; color: #fff; }
+    .step-item.active .step-label  { color: #1a73e8; }
+
+    /* État : déverrouillé (accessible mais pas encore actif) */
+    .step-item.unlocked .step-circle { background: #e8f0fe; color: #1a73e8; border: 2px solid #1a73e8; }
+    .step-item.unlocked .step-label  { color: #1a73e8; }
+
+    /* État : complété */
+    .step-item.completed .step-circle { background: #34a853; color: #fff; }
+    .step-item.completed .step-label  { color: #34a853; }
+
+    /* État : verrouillé */
+    .step-item.locked .step-circle { background: #e8eaed; color: #9aa0a6; }
+    .step-item.locked .step-label  { color: #9aa0a6; }
+
+    .step-connector {
+      flex: 1;
+      height: 2px;
+      background: #dadce0;
+      margin: 0 4px;
+      margin-bottom: 20px;
+      max-width: 80px;
+      transition: background .3s;
+    }
+    .step-connector.active { background: #1a73e8; }
+
+    /* ── Panneaux ── */
+    .step-panel {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.1);
+      transition: opacity .25s;
+    }
+
+    .step-panel.locked {
+      opacity: .45;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .panel-title {
+      font-size: 17px;
+      font-weight: 500;
+      color: #202124;
+      margin-bottom: 6px;
+    }
+
+    .panel-desc {
+      font-size: 14px;
+      color: #5f6368;
+      margin-bottom: 20px;
+    }
+
+    .locked-hint {
+      font-style: italic;
+    }
+
+    /* ── Séparateur "ou" entre les sources ── */
+    .source-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: #9aa0a6;
+      font-size: 13px;
+    }
+    .source-divider::before,
+    .source-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #dadce0;
+    }
+
+    /* ── Placeholders US futures ── */
+    .source-placeholder {
+      border: 2px dashed #dadce0;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      color: #9aa0a6;
+      font-size: 13px;
+    }
+
+    /* ── Utilitaires ── */
+    .hidden { display: none !important; }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .step-label   { font-size: 11px; }
+      .step-circle  { width: 28px; height: 28px; font-size: 12px; }
+      .step-panel   { padding: 20px 16px; }
+      .app-header h1 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+
+    <header class="app-header">
+      <h1>JSON → Sheets</h1>
+      <p>Transformez vos fichiers JSON en tableaux Google Sheets en quelques clics.</p>
+    </header>
+
+    <!-- Indicateur d'étapes -->
+    <nav class="steps-nav" aria-label="Étapes de conversion">
+      <div class="step-item active" id="step-nav-1">
+        <div class="step-circle">1</div>
+        <span class="step-label">Source</span>
+      </div>
+      <div class="step-connector" id="connector-1"></div>
+      <div class="step-item locked" id="step-nav-2">
+        <div class="step-circle">2</div>
+        <span class="step-label">Champs</span>
+      </div>
+      <div class="step-connector" id="connector-2"></div>
+      <div class="step-item locked" id="step-nav-3">
+        <div class="step-circle">3</div>
+        <span class="step-label">Destination</span>
+      </div>
+    </nav>
+
+    <!-- ── Panneau 1 : Source ── -->
+    <section class="step-panel active" id="panel-1" aria-labelledby="panel-1-title">
+      <h2 id="panel-1-title" class="panel-title">Choisissez votre fichier JSON</h2>
+      <p class="panel-desc">Indiquez le fichier JSON que vous souhaitez transformer en tableau.</p>
+
+      <!-- US-02 : Recherche Drive (à brancher) -->
+      <div id="source-drive">
+        <div class="source-placeholder">
+          🔍 Recherche dans Drive — disponible avec US-02
+        </div>
+      </div>
+
+      <div class="source-divider"><span>ou</span></div>
+
+      <!-- US-03 : Upload local (à brancher) -->
+      <div id="source-local">
+        <div class="source-placeholder">
+          📂 Depuis mon ordinateur — disponible avec US-03
+        </div>
+      </div>
+
+      <!-- Statut de sélection (affiché une fois source choisie) -->
+      <div id="source-status" class="hidden"></div>
+    </section>
+
+    <!-- ── Panneau 2 : Champs ── -->
+    <section class="step-panel locked" id="panel-2" aria-labelledby="panel-2-title">
+      <h2 id="panel-2-title" class="panel-title">Sélectionnez les champs à conserver</h2>
+      <p class="panel-desc locked-hint" id="panel-2-desc">
+        Disponible une fois le fichier source sélectionné.
+      </p>
+      <!-- US-04b : liste de checkboxes (à brancher) -->
+      <div id="fields-list"></div>
+      <div id="fields-status" class="hidden"></div>
+      <button id="btn-to-step3" class="hidden">Continuer →</button>
+    </section>
+
+    <!-- ── Panneau 3 : Destination ── -->
+    <section class="step-panel locked" id="panel-3" aria-labelledby="panel-3-title">
+      <h2 id="panel-3-title" class="panel-title">Choisissez la destination</h2>
+      <p class="panel-desc locked-hint" id="panel-3-desc">
+        Disponible une fois les champs sélectionnés.
+      </p>
+      <!-- US-05 + US-06 : options de destination (à brancher) -->
+      <div id="destination-options"></div>
+      <!-- US-07 + US-08 : bouton convertir + progression (à brancher) -->
+      <div id="conversion-zone"></div>
+    </section>
+
+  </div>
+
+  <script>
+    /**
+     * App — contrôleur du wizard.
+     * Expose unlockStep() et completeStep() utilisés par les US suivantes.
+     */
+    const App = {
+
+      /** État partagé entre les étapes. */
+      state: {
+        source:      null,  // { type: 'drive'|'local', id|content, name }
+        fields:      [],    // string[] — champs sélectionnés (US-04b)
+        destination: null,  // objet de config destination (US-05/06)
+      },
+
+      /**
+       * Déverrouille un panneau et met à jour l'indicateur de navigation.
+       * Fait défiler la page vers le panneau déverrouillé.
+       * @param {number} stepNumber - Numéro de l'étape (2 ou 3)
+       */
+      unlockStep: function (stepNumber) {
+        const panel    = document.getElementById('panel-'    + stepNumber);
+        const nav      = document.getElementById('step-nav-' + stepNumber);
+        const connector = document.getElementById('connector-' + (stepNumber - 1));
+
+        if (!panel || !nav) return;
+
+        panel.classList.remove('locked');
+        nav.classList.remove('locked');
+        nav.classList.add('unlocked');
+
+        if (connector) connector.classList.add('active');
+
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      },
+
+      /**
+       * Marque une étape comme complétée (indicateur vert).
+       * @param {number} stepNumber - Numéro de l'étape (1, 2 ou 3)
+       */
+      completeStep: function (stepNumber) {
+        const nav = document.getElementById('step-nav-' + stepNumber);
+        if (!nav) return;
+        nav.classList.remove('active', 'unlocked', 'locked');
+        nav.classList.add('completed');
+      },
+    };
+  </script>
+</body>
+</html>
