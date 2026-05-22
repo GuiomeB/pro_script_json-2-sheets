@@ -16,11 +16,47 @@
     _onInput: function (value) {
       clearTimeout(DriveSearch._timer);
       DriveSearch._hideDropdown();
-      if (value.trim().length < 2) return;
-      // Déclenche la recherche après 300 ms d'inactivité (debounce)
+      const trimmed = value.trim();
+      if (trimmed.length < 2) return;
+      // URL Drive/Docs explicite (collage) → résolution immédiate.
+      if (DriveSearch._isDriveUrl(trimmed)) {
+        DriveSearch._resolveUrl(trimmed);
+        return;
+      }
+      // Sinon, après 300 ms d'inactivité : un ID brut complet est résolu,
+      // tout le reste (y compris les noms longs) part en recherche par nom.
       DriveSearch._timer = setTimeout(function () {
-        DriveSearch._search(value.trim());
+        if (DriveSearch._isBareId(trimmed)) {
+          DriveSearch._resolveUrl(trimmed);
+        } else {
+          DriveSearch._search(trimmed);
+        }
       }, 300);
+    },
+
+    /** URL Drive ou Docs (signal fort : présence de l'hôte). */
+    _isDriveUrl: function (value) {
+      return /drive\.google\.com|docs\.google\.com/i.test(value);
+    },
+
+    /** ID brut : la saisie ENTIÈRE est un token de 25+ caractères (ancres ^…$),
+     *  ce qui exclut les noms de fichiers (qui contiennent un point ou des espaces). */
+    _isBareId: function (value) {
+      return /^[-\w]{25,}$/.test(value);
+    },
+
+    _resolveUrl: function (value) {
+      DriveSearch._setSpinner(true);
+      google.script.run
+        .withSuccessHandler(function (file) {
+          DriveSearch._setSpinner(false);
+          DriveSearch._select(file);
+        })
+        .withFailureHandler(function (error) {
+          DriveSearch._setSpinner(false);
+          DriveSearch._showMessage(error.message || 'Impossible de résoudre ce lien.');
+        })
+        .resolveDriveFile(value);
     },
 
     _search: function (term) {
