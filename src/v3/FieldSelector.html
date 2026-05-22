@@ -1,0 +1,78 @@
+<script>
+  /**
+   * FieldSelector — affiche la liste des champs JSON avec cases à cocher.
+   * Tout coché par défaut ; bloque la progression si aucun champ sélectionné.
+   */
+  const FieldSelector = {
+    _total: 0,
+
+    init: function () {
+      document.getElementById('btn-to-step3')
+        .addEventListener('click', function () {
+          App.completeStep(2);
+          App.unlockStep(3);
+          Destination.render();
+        });
+    },
+
+    /** Génère les cases à cocher à partir des champs retournés par AnalyseJson. */
+    render: function (fields) {
+      FieldSelector._total = fields.length;
+
+      document.getElementById('panel-2-desc').classList.add('hidden');
+
+      const list = document.getElementById('fields-list');
+      list.innerHTML = '';
+      fields.forEach(function (field) {
+        const item = document.createElement('div');
+        item.className = 'field-item';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.id = 'field-' + field;
+        cb.value = field;
+        cb.checked = true;
+        cb.className = 'field-checkbox';
+        cb.addEventListener('change', FieldSelector._updateCounter);
+
+        const lbl = document.createElement('label');
+        lbl.htmlFor = 'field-' + field;
+        lbl.className = 'field-label';
+        lbl.textContent = field;
+
+        item.appendChild(cb);
+        item.appendChild(lbl);
+        list.appendChild(item);
+      });
+
+      const counter = document.getElementById('fields-status');
+      counter.className = 'fields-counter';
+      const btn = document.getElementById('btn-to-step3');
+      btn.classList.add('btn-primary');
+      btn.classList.remove('hidden');
+
+      FieldSelector._updateCounter();
+    },
+
+    _updateCounter: function () {
+      const checkboxes = Array.from(
+        document.querySelectorAll('#fields-list .field-checkbox')
+      );
+      const checked = checkboxes.filter(function (cb) { return cb.checked; });
+
+      App.state.fields = checked.map(function (cb) { return cb.value; });
+
+      const n = checked.length;
+      const counter = document.getElementById('fields-status');
+      counter.textContent = n + ' champ' + (n > 1 ? 's' : '') +
+        ' sélectionné' + (n > 1 ? 's' : '') +
+        ' sur ' + FieldSelector._total;
+
+      const btn = document.getElementById('btn-to-step3');
+      btn.disabled = (n === 0);
+      if (n === 0) {
+        counter.textContent += ' — Sélectionnez au moins un champ pour continuer.';
+      }
+    },
+  };
+</script>

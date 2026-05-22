@@ -1,0 +1,122 @@
+<script>
+  /**
+   * App — contrôleur du wizard.
+   * Gère l'état partagé et les transitions d'étapes (verrouillage / déverrouillage).
+   * Fournit aussi les helpers UI partagés entre les modules (search, spinner…).
+   */
+  const App = {
+
+    /** État partagé entre les étapes. */
+    state: {
+      source:      null,  // { type: 'drive'|'local', id|content, name }
+      fields:      [],    // string[] — champs sélectionnés
+      destination: null,  // objet de config destination
+    },
+
+    /**
+     * Déverrouille un panneau et met à jour l'indicateur de navigation.
+     * Fait défiler la page vers le panneau déverrouillé.
+     * @param {number} stepNumber
+     */
+    unlockStep: function (stepNumber) {
+      const panel     = document.getElementById('panel-'     + stepNumber);
+      const nav       = document.getElementById('step-nav-'  + stepNumber);
+      const connector = document.getElementById('connector-' + (stepNumber - 1));
+
+      if (!panel || !nav) return;
+
+      panel.classList.remove('locked');
+      nav.classList.remove('locked');
+      nav.classList.add('unlocked');
+
+      if (connector) connector.classList.add('active');
+
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+
+    /**
+     * Verrouille un panneau — inverse symétrique de unlockStep.
+     * @param {number} stepNumber
+     */
+    lockStep: function (stepNumber) {
+      const panel     = document.getElementById('panel-'     + stepNumber);
+      const nav       = document.getElementById('step-nav-'  + stepNumber);
+      const connector = document.getElementById('connector-' + (stepNumber - 1));
+      if (panel) panel.classList.add('locked');
+      if (nav) {
+        nav.classList.remove('unlocked', 'completed');
+        nav.classList.add('locked');
+      }
+      if (connector) connector.classList.remove('active');
+    },
+
+    /**
+     * Marque une étape comme complétée (indicateur vert).
+     * @param {number} stepNumber
+     */
+    completeStep: function (stepNumber) {
+      const nav = document.getElementById('step-nav-' + stepNumber);
+      if (!nav) return;
+      nav.classList.remove('active', 'unlocked', 'locked');
+      nav.classList.add('completed');
+    },
+
+    /**
+     * Efface l'affichage de la source non active.
+     * Garantit l'exclusivité mutuelle entre Drive Search et Upload local.
+     * @param {'drive'|'local'} keepType - Source à conserver
+     */
+    clearOtherSource: function (keepType) {
+      if (keepType !== 'local') {
+        document.getElementById('local-selected').classList.add('hidden');
+        document.getElementById('local-selected-name').textContent = '';
+        document.getElementById('local-file-input').value = '';
+      }
+      if (keepType !== 'drive') {
+        document.getElementById('drive-selected').classList.add('hidden');
+        document.getElementById('drive-selected-name').textContent = '';
+        document.getElementById('drive-search-input').value = '';
+        DriveSearch._hideDropdown();
+      }
+    },
+
+    // ── Helpers UI partagés (search widgets) ──
+
+    /**
+     * Affiche une liste de résultats Drive dans un <ul> existant.
+     * @param {string} listId
+     * @param {{ id: string, name: string }[]} results
+     * @param {function} onSelect  Appelée avec l'objet fichier sélectionné
+     * @param {function} onEmpty   Appelée quand results est vide
+     */
+    renderSearchResults: function (listId, results, onSelect, onEmpty) {
+      const list = document.getElementById(listId);
+      list.innerHTML = '';
+      if (!results.length) { onEmpty(); return; }
+      results.forEach(function (file) {
+        const li = document.createElement('li');
+        li.className = 'result-item';
+        li.setAttribute('role', 'option');
+        li.textContent = file.name;
+        li.addEventListener('click', function () { onSelect(file); });
+        list.appendChild(li);
+      });
+      list.classList.remove('hidden');
+    },
+
+    hideSearchDropdown: function (resultsId, messageId) {
+      document.getElementById(resultsId).classList.add('hidden');
+      document.getElementById(messageId).classList.add('hidden');
+    },
+
+    showSearchMessage: function (messageId, msg) {
+      const el = document.getElementById(messageId);
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    },
+
+    setSpinner: function (spinnerId, show) {
+      document.getElementById(spinnerId).classList.toggle('hidden', !show);
+    },
+  };
+</script>

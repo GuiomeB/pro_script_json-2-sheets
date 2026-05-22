@@ -1,0 +1,72 @@
+<script>
+  /**
+   * LocalUpload — chargement d'un fichier JSON depuis l'ordinateur.
+   * Utilise FileReader (API navigateur) — aucun appel serveur requis.
+   */
+  const LocalUpload = {
+
+    init: function () {
+      document.getElementById('local-file-btn')
+        .addEventListener('click', function () {
+          document.getElementById('local-file-input').click();
+        });
+      document.getElementById('local-file-input')
+        .addEventListener('change', function () {
+          if (this.files.length) LocalUpload._handleFile(this.files[0]);
+        });
+      document.getElementById('local-clear-btn')
+        .addEventListener('click', LocalUpload._reset);
+    },
+
+    _handleFile: function (file) {
+      LocalUpload._clearError();
+
+      if (!file.name.toLowerCase().endsWith('.json')) {
+        LocalUpload._showError('Ce fichier n\'est pas au format JSON. Veuillez choisir un fichier .json.');
+        return;
+      }
+      if (file.size === 0) {
+        LocalUpload._showError('Ce fichier est vide.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const content = e.target.result;
+        try {
+          JSON.parse(content);
+        } catch (_) {
+          LocalUpload._showError('Ce fichier ne semble pas être un JSON valide. Vérifiez son contenu.');
+          return;
+        }
+        App.clearOtherSource('local');
+        App.state.source = { type: 'local', content: content, name: file.name };
+        document.getElementById('local-selected-name').textContent = file.name;
+        document.getElementById('local-selected').classList.remove('hidden');
+        App.completeStep(1);
+        App.unlockStep(2);
+        AnalyseJson.run(App.state.source);
+      };
+      reader.readAsText(file);
+    },
+
+    _reset: function () {
+      App.state.source = null;
+      document.getElementById('local-file-input').value = '';
+      document.getElementById('local-selected').classList.add('hidden');
+      document.getElementById('local-selected-name').textContent = '';
+      LocalUpload._clearError();
+      App.lockStep(2);
+    },
+
+    _showError: function (msg) {
+      const el = document.getElementById('local-error');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    },
+
+    _clearError: function () {
+      document.getElementById('local-error').classList.add('hidden');
+    },
+  };
+</script>
