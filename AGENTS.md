@@ -11,9 +11,11 @@
 
 ## Project
 
-**JSON_2_Sheets** — Extrait les données d'un fichier JSON Google Drive et les écrit dans un onglet Sheets, à partir de chemins JSON définis en ligne 1.
+**JSON_2_Sheets** — Convertit un fichier JSON en tableau Google Sheets.
 
-Stack: Google Apps Script (V8 runtime), déployé directement dans un Google Spreadsheet
+Stack : Google Apps Script (V8 runtime). Deux produits :
+- **v3** — Web App (wizard 3 étapes), déployée via clasp (`npm run push`). Code : `src/v3/`.
+- **v2** — script lié à un spreadsheet (legacy), résolution de chemins dot-notation. Code : `src/gs/`.
 
 ### Arborescence
 
@@ -75,17 +77,23 @@ Never load large documents "just in case".
 - **Symétrie API** : toute fonction `lockX()` doit avoir son inverse `unlockX()` (et vice versa)
 - **Helpers UI partagés** : `renderSearchResults`, `setSpinner`, `hideSearchDropdown`, `showSearchMessage` vivent sur `App` — ne pas les dupliquer par module
 
+### Gestion des données JSON
+
+- **Enveloppe à clé unique** : `JsonParser._unwrapSingleKey()` descend dans les objets à une seule clé (`[{infosMagasin:{…}}]` → colonnes réelles). Appliqué **à l'identique** à l'extraction des champs ET aux données converties — sinon en-têtes et données se désalignent.
+- **Recherche Drive des `.json`** : filtrer sur l'**extension `.json`** du nom, **pas** sur `mimeType = "application/json"`. Drive stocke fréquemment les `.json` en `text/plain`, invisibles au filtre MIME. (Le MIME natif des Google Sheets, lui, est fiable → la recherche Sheets garde son filtre MIME.)
+
 ---
 
 ## Critical zones
 
-| Zone | Pourquoi critique | Règle |
-|---|---|---|
-| `ExtractionLogger._getOrCreateLogSheet()` | Crée/modifie un onglet permanent du spreadsheet | Vérifier que le nom `Logs` n'entre pas en conflit avec un onglet existant avant de modifier |
-| `SheetWriter.clearPreviousData()` | Efface les données utilisateur à partir de la ligne 2 | Ne modifier la logique de nettoyage qu'avec un test sur un spreadsheet de dev |
-| `JsonPathResolver.normalizeValue()` | Régit la conversion des valeurs — notamment dates ISO → Date | Tout changement doit être vérifié sur les 3 types : string, ISO date, objet imbriqué |
-| `SheetWriter._sheetResolveTabName` | Renomme un onglet existant avec suffixe `_2`, `_3`… | Tester sur un Sheets avec des onglets déjà nommés `Export_*` |
-| `SheetWriter._sheetWriteBatches` | Écrit par batches de 1000 lignes via `setValues` | Ne pas modifier la taille de batch sans tester sur un JSON > 5 000 lignes |
+| Zone | Version | Pourquoi critique | Règle |
+|---|---|---|---|
+| `JsonParser._unwrapSingleKey` | v3 | Définit quelles colonnes sont extraites (déballage des wrappers) | Toute modif doit être répercutée **à l'identique** dans `_extractKeys` ET `_getConvertData` |
+| `SheetWriter._sheetResolveTabName` | v3 | Renomme un onglet existant avec suffixe `_2`, `_3`… | Tester sur un Sheets avec des onglets déjà nommés `Export_*` |
+| `SheetWriter._sheetWriteBatches` | v3 | Écrit par batches de 1000 lignes via `setValues` | Ne pas modifier la taille de batch sans tester sur un JSON > 5 000 lignes ; gère les lignes non-objet |
+| `ExtractionLogger._getOrCreateLogSheet()` | v2 | Crée/modifie un onglet permanent du spreadsheet | Vérifier que le nom `Logs` n'entre pas en conflit avec un onglet existant avant de modifier |
+| `SheetWriter.clearPreviousData()` | v2 | Efface les données utilisateur à partir de la ligne 2 | Ne modifier la logique de nettoyage qu'avec un test sur un spreadsheet de dev |
+| `JsonPathResolver.normalizeValue()` | v2 | Régit la conversion des valeurs — notamment dates ISO → Date | Tout changement doit être vérifié sur les 3 types : string, ISO date, objet imbriqué |
 
 ---
 
