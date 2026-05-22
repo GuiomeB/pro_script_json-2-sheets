@@ -11,18 +11,16 @@
 
 ## Project
 
-**JSON_2_Sheets** — Convertit un fichier JSON en tableau Google Sheets.
+**JSON_2_Sheets** (« Json 2 Sheets ») — Web App Google Apps Script qui convertit un fichier JSON / `.txt` en tableau Google Sheets (wizard 3 étapes), déployée via clasp (`npm run push`).
 
-Stack : Google Apps Script (V8 runtime). Deux produits :
-- **v3** — Web App (wizard 3 étapes), déployée via clasp (`npm run push`). Code : `src/v3/`.
-- **v2** — script lié à un spreadsheet (legacy), résolution de chemins dot-notation. Code : `src/gs/`.
+Stack : Google Apps Script (V8 runtime).
 
 ### Arborescence
 
 ```
 backlog/    → BACKLOG_v3.md + specs US (US-NN_*.md)
-src/        → code source
-src/v3/     → Web App GAS (voir conventions v3 ci-dessous)
+src/        → Web App GAS (code, voir conventions ci-dessous)
+scripts/    → outillage (inject-version.mjs)
 ```
 
 ---
@@ -42,14 +40,13 @@ Never load large documents "just in case".
 
 | Purpose | Command |
 |---|---|
-| Déployer v3 (Web App) | `npm run push` (clasp → `src/v3/`). Voir README pour login/redeploy. |
-| Déployer v2 (legacy) | Copier les `.gs` de `src/gs/` dans l'éditeur Apps Script du spreadsheet cible |
+| Déployer (Web App) | `npm run push` (clasp → `src/`). Voir README pour login/redeploy. |
 | Lint local | `<lint command>` — aucun outil local configuré à ce stade |
 | Tests | Aucun framework de test configuré — validation manuelle après `npm run push` |
 
 ---
 
-## GAS Web App — conventions v3 (`src/v3/`)
+## GAS Web App — conventions (`src/`)
 
 ### Structure de fichiers
 
@@ -86,14 +83,11 @@ Never load large documents "just in case".
 
 ## Critical zones
 
-| Zone | Version | Pourquoi critique | Règle |
-|---|---|---|---|
-| `JsonParser._unwrapSingleKey` | v3 | Définit quelles colonnes sont extraites (déballage des wrappers) | Toute modif doit être répercutée **à l'identique** dans `_extractKeys` ET `_getConvertData` |
-| `SheetWriter._sheetResolveTabName` | v3 | Renomme un onglet existant avec suffixe `_2`, `_3`… | Tester sur un Sheets avec des onglets déjà nommés `Export_*` |
-| `SheetWriter._sheetWriteBatches` | v3 | Écrit par batches de 1000 lignes via `setValues` | Ne pas modifier la taille de batch sans tester sur un JSON > 5 000 lignes ; gère les lignes non-objet |
-| `ExtractionLogger._getOrCreateLogSheet()` | v2 | Crée/modifie un onglet permanent du spreadsheet | Vérifier que le nom `Logs` n'entre pas en conflit avec un onglet existant avant de modifier |
-| `SheetWriter.clearPreviousData()` | v2 | Efface les données utilisateur à partir de la ligne 2 | Ne modifier la logique de nettoyage qu'avec un test sur un spreadsheet de dev |
-| `JsonPathResolver.normalizeValue()` | v2 | Régit la conversion des valeurs — notamment dates ISO → Date | Tout changement doit être vérifié sur les 3 types : string, ISO date, objet imbriqué |
+| Zone | Pourquoi critique | Règle |
+|---|---|---|
+| `JsonParser._unwrapSingleKey` | Définit quelles colonnes sont extraites (déballage des wrappers) | Toute modif doit être répercutée **à l'identique** dans `_extractKeys` ET `_getConvertData` |
+| `SheetWriter._sheetResolveTabName` | Renomme un onglet existant avec suffixe `_2`, `_3`… | Tester sur un Sheets avec des onglets déjà nommés `Export_*` |
+| `SheetWriter._sheetWriteBatches` | Écrit par batches de 1000 lignes via `setValues` | Ne pas modifier la taille de batch sans tester sur un JSON > 5 000 lignes ; gère les lignes non-objet |
 
 ---
 

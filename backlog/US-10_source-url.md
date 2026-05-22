@@ -4,7 +4,7 @@
 
 ## Contexte technique
 
-Web App GAS v3 (`src/v3/`). À l'étape 1, l'utilisateur fournit le JSON source en **tapant un nom**
+Web App GAS (`src/`). À l'étape 1, l'utilisateur fournit le JSON source en **tapant un nom**
 (recherche Drive débouncée) ou en **uploadant en local**. La v2 acceptait aussi une **URL Drive
 complète ou un ID** (`ConfigService.extractDriveFileId`). On réintroduit cette 3e voie, frictionless,
 dans le **même champ** de recherche source.

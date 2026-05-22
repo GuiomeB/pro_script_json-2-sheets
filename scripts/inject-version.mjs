@@ -1,5 +1,5 @@
 /**
- * Génère src/v3/Version.gs à partir de la version de package.json.
+ * Génère src/Version.gs à partir de la version de package.json.
  * Dérive le tag affiché « vMAJEUR.MINEUR » (ex. 3.3.0 → v3.3).
  * Lancé automatiquement avant `clasp push` (cf. script npm "push").
  */
@@ -20,5 +20,5 @@ const content =
   ' */\n' +
   `const APP_VERSION = '${tag}';\n`;
 
-writeFileSync(join(root, 'src/v3/Version.gs'), content);
+writeFileSync(join(root, 'src/Version.gs'), content);
 console.log(`Version.gs → ${tag}`);
