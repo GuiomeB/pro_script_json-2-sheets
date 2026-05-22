@@ -6,7 +6,7 @@
   "scripts": {
     "login": "clasp login",
     "push": "node scripts/inject-version.mjs && clasp push -f",
-    "watch": "clasp push -w",
+    "watch": "node scripts/inject-version.mjs && clasp push -w",
     "pull": "clasp pull",
     "status": "clasp status",
     "open": "clasp open-script",
