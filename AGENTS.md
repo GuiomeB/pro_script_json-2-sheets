@@ -15,6 +15,14 @@
 
 Stack: Google Apps Script (V8 runtime), déployé directement dans un Google Spreadsheet
 
+### Arborescence
+
+```
+backlog/    → BACKLOG_v3.md + specs US (US-NN_*.md)
+src/        → code source
+src/v3/     → Web App GAS (voir conventions v3 ci-dessous)
+```
+
 ---
 
 ## Role
@@ -38,6 +46,32 @@ Never load large documents "just in case".
 
 ---
 
+## GAS Web App — conventions v3 (`src/v3/`)
+
+### Structure de fichiers
+
+| Fichier | Rôle | Règle |
+|---|---|---|
+| `WebApp.gs` | `doGet()` uniquement — point d'entrée | < 15 lignes, aucune logique métier |
+| `*.gs` | Un fichier par domaine métier | `JsonParser.gs`, `SheetWriter.gs`, `DriveSearch.gs` |
+| `index.html` | Structure HTML + scriptlets d'assemblage | Aucun CSS ni JS inline |
+| `Styles.html` | `<style>` uniquement | Pas de DOCTYPE |
+| `App.html` | Objet `App` global (state + helpers UI partagés) | |
+| `*.html` | Un fragment par module JS | PascalCase = nom de l'objet JS dedans |
+
+### Règles d'assemblage
+
+- Un fragment = `<script>` ou `<style>` nu, sans DOCTYPE
+- Inclus via `<?!= HtmlService.createHtmlOutputFromFile('X').getContent(); ?>`
+- Les appels `.init()` vont dans le **dernier** fragment (`Progression.html`) — tous les objets JS sont définis avant
+
+### Règles de conception
+
+- **Symétrie API** : toute fonction `lockX()` doit avoir son inverse `unlockX()` (et vice versa)
+- **Helpers UI partagés** : `renderSearchResults`, `setSpinner`, `hideSearchDropdown`, `showSearchMessage` vivent sur `App` — ne pas les dupliquer par module
+
+---
+
 ## Critical zones
 
 | Zone | Pourquoi critique | Règle |
@@ -45,6 +79,8 @@ Never load large documents "just in case".
 | `ExtractionLogger._getOrCreateLogSheet()` | Crée/modifie un onglet permanent du spreadsheet | Vérifier que le nom `Logs` n'entre pas en conflit avec un onglet existant avant de modifier |
 | `SheetWriter.clearPreviousData()` | Efface les données utilisateur à partir de la ligne 2 | Ne modifier la logique de nettoyage qu'avec un test sur un spreadsheet de dev |
 | `JsonPathResolver.normalizeValue()` | Régit la conversion des valeurs — notamment dates ISO → Date | Tout changement doit être vérifié sur les 3 types : string, ISO date, objet imbriqué |
+| `SheetWriter._sheetResolveTabName` | Renomme un onglet existant avec suffixe `_2`, `_3`… | Tester sur un Sheets avec des onglets déjà nommés `Export_*` |
+| `SheetWriter._sheetWriteBatches` | Écrit par batches de 1000 lignes via `setValues` | Ne pas modifier la taille de batch sans tester sur un JSON > 5 000 lignes |
 
 ---
 
