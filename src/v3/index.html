@@ -176,6 +176,11 @@
     .clear-btn { background: none; border: none; cursor: pointer; color: #5f6368; font-size: 18px; line-height: 1; padding: 0 4px; }
     .clear-btn:hover { color: #202124; }
 
+    /* ── US-03 : Upload local ── */
+    .btn-secondary { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border: 1px solid #dadce0; border-radius: 8px; background: #fff; color: #1a73e8; font-size: 14px; font-family: inherit; cursor: pointer; transition: background .15s, border-color .15s; }
+    .btn-secondary:hover { background: #f8f9fa; border-color: #1a73e8; }
+    .error-message { font-size: 13px; color: #d93025; margin-top: 8px; }
+
     /* ── Utilitaires ── */
     .hidden { display: none !important; }
 
@@ -239,10 +244,16 @@
 
       <div class="source-divider"><span>ou</span></div>
 
-      <!-- US-03 : Upload local (à brancher) -->
+      <!-- US-03 : Upload local -->
       <div id="source-local">
-        <div class="source-placeholder">
-          📂 Depuis mon ordinateur — disponible avec US-03
+        <input type="file" id="local-file-input" accept=".json" class="hidden"
+          aria-label="Choisir un fichier JSON depuis l'ordinateur">
+        <button id="local-file-btn" class="btn-secondary">📂 Depuis mon ordinateur</button>
+        <div id="local-error" class="error-message hidden"></div>
+        <div id="local-selected" class="selected-file hidden">
+          <span class="selected-icon">✓</span>
+          <span id="local-selected-name" class="selected-name"></span>
+          <button id="local-clear-btn" class="clear-btn" aria-label="Effacer la sélection">×</button>
         </div>
       </div>
 
@@ -321,6 +332,25 @@
         nav.classList.remove('active', 'unlocked', 'locked');
         nav.classList.add('completed');
       },
+
+      /**
+       * Efface l'affichage de la source non active.
+       * Garantit l'exclusivité mutuelle entre Drive Search et Upload local.
+       * @param {'drive'|'local'} keepType - Source à conserver
+       */
+      clearOtherSource: function (keepType) {
+        if (keepType !== 'local') {
+          document.getElementById('local-selected').classList.add('hidden');
+          document.getElementById('local-selected-name').textContent = '';
+          document.getElementById('local-file-input').value = '';
+        }
+        if (keepType !== 'drive') {
+          document.getElementById('drive-selected').classList.add('hidden');
+          document.getElementById('drive-selected-name').textContent = '';
+          document.getElementById('drive-search-input').value = '';
+          DriveSearch._hideDropdown();
+        }
+      },
     };
 
     /**
@@ -382,6 +412,7 @@
       },
 
       _select: function (file) {
+        App.clearOtherSource('drive');
         App.state.source = { type: 'drive', id: file.id, name: file.name };
         document.getElementById('drive-search-input').value = '';
         DriveSearch._hideDropdown();
@@ -420,8 +451,85 @@
       },
     };
 
+    /**
+     * LocalUpload — chargement d'un fichier JSON depuis l'ordinateur.
+     * Utilise FileReader (API navigateur) — aucun appel serveur requis.
+     */
+    const LocalUpload = {
+
+      init: function () {
+        document.getElementById('local-file-btn')
+          .addEventListener('click', function () {
+            document.getElementById('local-file-input').click();
+          });
+        document.getElementById('local-file-input')
+          .addEventListener('change', function () {
+            if (this.files.length) LocalUpload._handleFile(this.files[0]);
+          });
+        document.getElementById('local-clear-btn')
+          .addEventListener('click', LocalUpload._reset);
+      },
+
+      _handleFile: function (file) {
+        LocalUpload._clearError();
+
+        if (!file.name.toLowerCase().endsWith('.json')) {
+          LocalUpload._showError('Ce fichier n\'est pas au format JSON. Veuillez choisir un fichier .json.');
+          return;
+        }
+        if (file.size === 0) {
+          LocalUpload._showError('Ce fichier est vide.');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const content = e.target.result;
+          try {
+            JSON.parse(content);
+          } catch (_) {
+            LocalUpload._showError('Ce fichier ne semble pas être un JSON valide. Vérifiez son contenu.');
+            return;
+          }
+          App.clearOtherSource('local');
+          App.state.source = { type: 'local', content: content, name: file.name };
+          document.getElementById('local-selected-name').textContent = file.name;
+          document.getElementById('local-selected').classList.remove('hidden');
+          App.completeStep(1);
+          App.unlockStep(2);
+          // TODO US-04a : AnalyseJson.run({ type: 'local', content: content });
+        };
+        reader.readAsText(file);
+      },
+
+      /** Réinitialise la sélection et re-verrouille l'étape 2. */
+      _reset: function () {
+        App.state.source = null;
+        document.getElementById('local-file-input').value = '';
+        document.getElementById('local-selected').classList.add('hidden');
+        document.getElementById('local-selected-name').textContent = '';
+        LocalUpload._clearError();
+        document.getElementById('panel-2').classList.add('locked');
+        const nav2 = document.getElementById('step-nav-2');
+        nav2.classList.remove('unlocked', 'completed');
+        nav2.classList.add('locked');
+        document.getElementById('connector-1').classList.remove('active');
+      },
+
+      _showError: function (msg) {
+        const el = document.getElementById('local-error');
+        el.textContent = msg;
+        el.classList.remove('hidden');
+      },
+
+      _clearError: function () {
+        document.getElementById('local-error').classList.add('hidden');
+      },
+    };
+
     // ── Initialisation ──
     DriveSearch.init();
+    LocalUpload.init();
   </script>
 </body>
 </html>
