@@ -18,20 +18,31 @@
       DriveSearch._hideDropdown();
       const trimmed = value.trim();
       if (trimmed.length < 2) return;
-      // URL Drive ou ID collé → résolution directe (pas de recherche par nom).
-      if (DriveSearch._looksLikeDriveRef(trimmed)) {
+      // URL Drive/Docs explicite (collage) → résolution immédiate.
+      if (DriveSearch._isDriveUrl(trimmed)) {
         DriveSearch._resolveUrl(trimmed);
         return;
       }
-      // Sinon : recherche par nom après 300 ms d'inactivité (debounce).
+      // Sinon, après 300 ms d'inactivité : un ID brut complet est résolu,
+      // tout le reste (y compris les noms longs) part en recherche par nom.
       DriveSearch._timer = setTimeout(function () {
-        DriveSearch._search(trimmed);
+        if (DriveSearch._isBareId(trimmed)) {
+          DriveSearch._resolveUrl(trimmed);
+        } else {
+          DriveSearch._search(trimmed);
+        }
       }, 300);
     },
 
-    /** Détecte une URL Drive/Docs ou un ID brut (segment de 25+ caractères). */
-    _looksLikeDriveRef: function (value) {
-      return /drive\.google\.com|docs\.google\.com/i.test(value) || /[-\w]{25,}/.test(value);
+    /** URL Drive ou Docs (signal fort : présence de l'hôte). */
+    _isDriveUrl: function (value) {
+      return /drive\.google\.com|docs\.google\.com/i.test(value);
+    },
+
+    /** ID brut : la saisie ENTIÈRE est un token de 25+ caractères (ancres ^…$),
+     *  ce qui exclut les noms de fichiers (qui contiennent un point ou des espaces). */
+    _isBareId: function (value) {
+      return /^[-\w]{25,}$/.test(value);
     },
 
     _resolveUrl: function (value) {

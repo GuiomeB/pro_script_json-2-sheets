@@ -30,19 +30,25 @@ Scénario : URL/ID inaccessible ou invalide (sad path)
   Alors un message non technique s'affiche
   Et aucune source n'est sélectionnée
 
-Scénario : Recherche par nom préservée
-  Étant donné que je tape un terme court (un nom de fichier)
-  Quand la saisie n'est pas une URL/ID
+Scénario : Recherche par nom préservée (y compris noms longs)
+  Étant donné que je tape un nom de fichier (même 25+ caractères, ex. export_production_users_2026.json)
+  Quand la saisie n'est pas une URL et n'est pas un ID brut complet
   Alors la recherche par nom débouncée (300 ms) fonctionne comme avant
+  Et aucune erreur « lien invalide » n'apparaît en cours de frappe
+
+Scénario : URL d'un type non supporté (sad path)
+  Étant donné l'URL d'un dossier, d'un PDF ou d'un Google Sheets
+  Quand je la colle
+  Alors un message « Format non supporté » s'affiche (sans attendre l'étape de parsing)
 ```
 
 ## Implémentation
 
 - `DriveApi.gs` :
   - `_extractDriveFileId(input)` — réplique v2 : `/\/d\/([-\w]{25,})/` puis fallback `/[-\w]{25,}/`.
-  - `resolveDriveFile(urlOrId)` — ouvre via `DriveApp.getFileById`, retourne `{ id, name }`, lève une erreur amicale sinon. Exposée à `google.script.run`.
+  - `resolveDriveFile(urlOrId)` — ouvre via `DriveApp.getFileById`, **valide l'extension** `/\.(json|txt)$/i` (rejette dossiers/PDF/Sheets), retourne `{ id, name }`, erreurs amicales. Exposée à `google.script.run`.
 - `DriveSearch.html` :
-  - `_onInput` détecte une URL/ID via `_looksLikeDriveRef` (`drive.google.com`/`docs.google.com` ou segment 25+ caractères) → `_resolveUrl` ; sinon recherche débouncée.
+  - `_onInput` : URL Drive/Docs explicite (`_isDriveUrl`) → résolution immédiate ; sinon, **après debounce 300 ms**, ID brut complet (`_isBareId`, ancré `/^[-\w]{25,}$/`) → résolution, autrement recherche par nom. Les ancres + le debounce évitent de hijacker un nom long en cours de frappe.
   - `_resolveUrl` appelle `resolveDriveFile` puis réutilise `_select(file)` (flux existant : `App.state.source`, `unlockStep(2)`, `AnalyseJson.run`).
 - `index.html` : libellé du champ → « Rechercher dans Google Drive (nom ou URL du fichier) ».
 

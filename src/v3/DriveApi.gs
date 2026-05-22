@@ -92,10 +92,16 @@ function resolveDriveFile(urlOrId) {
   if (!id) {
     throw new Error('Lien ou identifiant invalide. Collez l\'URL complète du fichier, ou son identifiant.');
   }
+  let file;
   try {
-    const file = DriveApp.getFileById(id);
-    return { id: file.getId(), name: file.getName() };
+    file = DriveApp.getFileById(id);
   } catch (e) {
     throw new Error('Fichier introuvable ou inaccessible. Vérifiez le lien et vos droits d\'accès.');
   }
+  const name = file.getName();
+  // Rejette tôt dossiers / PDF / Sheets : cohérent avec l'upload local (.json / .txt).
+  if (!/\.(json|txt)$/i.test(name)) {
+    throw new Error('Format non supporté. Sélectionnez un fichier .json ou .txt.');
+  }
+  return { id: file.getId(), name: name };
 }
