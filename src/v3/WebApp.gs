@@ -99,6 +99,99 @@ function _extractKeys(parsed) {
  * @param {string} term - Terme de recherche (contenu dans le nom du fichier)
  * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
  */
+/**
+ * Convertit un fichier JSON en tableau Google Sheets.
+ * Crée le fichier ou l'onglet cible selon la destination, écrit les données par lots.
+ *
+ * @param {{ source: Object, fields: string[], destination: Object }} params
+ * @returns {string} URL du fichier Sheets créé ou modifié
+ */
+function convertJsonToSheet(params) {
+  const data        = _getConvertData(params.source);
+  const { sheet, url } = _sheetPrepareTarget(params.destination);
+  const fields      = params.fields;
+
+  // Ligne 1 : en-têtes
+  sheet.getRange(1, 1, 1, fields.length).setValues([fields]);
+
+  // Lignes de données (par lots pour éviter les timeouts GAS)
+  if (data.length > 0) {
+    _sheetWriteBatches(sheet, data, fields);
+  }
+
+  return url;
+}
+
+/**
+ * Lit et parse le JSON source (Drive ou local).
+ * Réutilise _readJsonSource et _parseJson définis pour extractJsonFields.
+ * @returns {Object[]} Tableau d'objets à écrire
+ */
+function _getConvertData(source) {
+  const raw    = source.type === 'drive' ? source.id : source.content;
+  const parsed = _parseJson(_readJsonSource(source.type, raw));
+  return Array.isArray(parsed) ? parsed : [parsed];
+}
+
+/**
+ * Crée le fichier Sheets (mode 'new') ou insère un onglet (mode 'tab').
+ * @returns {{ sheet: Sheet, url: string }}
+ */
+function _sheetPrepareTarget(destination) {
+  if (destination.mode === 'new') {
+    const ss    = SpreadsheetApp.create(destination.fileName);
+    return { sheet: ss.getActiveSheet(), url: ss.getUrl() };
+  }
+
+  // mode 'tab' — ouvre le fichier existant
+  let ss;
+  try {
+    ss = SpreadsheetApp.openById(destination.spreadsheetId);
+  } catch (e) {
+    throw new Error('Impossible d\'ouvrir le fichier Sheets cible. Vérifiez vos droits d\'édition.');
+  }
+  const tabName = _sheetResolveTabName(ss, destination.tabName);
+  const sheet   = ss.insertSheet(tabName);
+  return { sheet: sheet, url: ss.getUrl() + '#gid=' + sheet.getSheetId() };
+}
+
+/**
+ * Retourne un nom d'onglet unique en suffixant _2, _3… si nécessaire.
+ * @param {GoogleAppsScript.Spreadsheet.Spreadsheet} ss
+ * @param {string} name - Nom souhaité
+ * @returns {string} Nom disponible
+ */
+function _sheetResolveTabName(ss, name) {
+  const existing = ss.getSheets().map(function (s) { return s.getName(); });
+  if (!existing.includes(name)) return name;
+  let n = 2;
+  while (existing.includes(name + '_' + n)) n++;
+  return name + '_' + n;
+}
+
+/**
+ * Écrit les données dans la feuille par lots de 1000 lignes.
+ * Les valeurs imbriquées (objets/tableaux) sont converties en JSON string.
+ * Les clés absentes laissent la cellule vide.
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
+ * @param {Object[]} data
+ * @param {string[]} fields
+ */
+function _sheetWriteBatches(sheet, data, fields) {
+  const BATCH = 1000;
+  for (let start = 0; start < data.length; start += BATCH) {
+    const rows = data.slice(start, start + BATCH).map(function (item) {
+      return fields.map(function (field) {
+        const val = item[field];
+        if (val === null || val === undefined) return '';
+        if (typeof val === 'object') return JSON.stringify(val);
+        return val;
+      });
+    });
+    sheet.getRange(start + 2, 1, rows.length, fields.length).setValues(rows);
+  }
+}
+
 function searchDriveSheetsFiles(term) {
   const query = `title contains "${term}" and mimeType = "application/vnd.google-apps.spreadsheet" and trashed = false`;
   const iterator = DriveApp.searchFiles(query);

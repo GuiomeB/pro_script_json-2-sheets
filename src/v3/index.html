@@ -756,7 +756,36 @@
           '<button id="btn-convert" class="btn-primary btn-convert" disabled>' +
             'Convertir →' +
           '</button>';
-        // TODO US-07 : brancher le handler de conversion sur btn-convert
+        document.getElementById('btn-convert')
+          .addEventListener('click', Destination._onConvert);
+      },
+
+      /** Déclenche la conversion côté serveur. */
+      _onConvert: function () {
+        const btn = document.getElementById('btn-convert');
+        btn.disabled = true;
+        // TODO US-08 : Progression.start();
+        google.script.run
+          .withSuccessHandler(function (url) {
+            // TODO US-08 : Progression.showSuccess(url);
+          })
+          .withFailureHandler(function (error) {
+            btn.disabled = false;
+            // TODO US-08 : Progression.showError(error.message);
+          })
+          .convertJsonToSheet(Destination._buildConvertParams());
+      },
+
+      /** Construit l'objet params transmis à convertJsonToSheet(). */
+      _buildConvertParams: function () {
+        const src = App.state.source;
+        return {
+          source: src.type === 'drive'
+            ? { type: 'drive', id: src.id }
+            : { type: 'local', content: src.content },
+          fields:      App.state.fields,
+          destination: App.state.destination,
+        };
       },
 
       /** Pré-remplit le nom du fichier à partir du nom de la source. */
