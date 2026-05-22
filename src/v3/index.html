@@ -24,8 +24,8 @@
         <label class="input-label" for="drive-search-input">Rechercher dans Google Drive</label>
         <div class="search-wrapper">
           <input type="text" id="drive-search-input" class="text-input"
-            placeholder="Tapez le nom de votre fichier JSON..."
-            autocomplete="off" aria-label="Recherche de fichier JSON dans Drive">
+            placeholder="Tapez le nom de votre fichier (.json ou .txt)..."
+            autocomplete="off" aria-label="Recherche de fichier JSON ou .txt dans Drive">
           <span id="drive-search-spinner" class="input-spinner hidden"></span>
         </div>
         <ul id="drive-search-results" class="results-list hidden" role="listbox"></ul>
@@ -41,8 +41,8 @@
 
       <!-- Upload local -->
       <div id="source-local">
-        <input type="file" id="local-file-input" accept=".json" class="hidden"
-          aria-label="Choisir un fichier JSON depuis l'ordinateur">
+        <input type="file" id="local-file-input" accept=".json,.txt" class="hidden"
+          aria-label="Choisir un fichier JSON ou .txt depuis l'ordinateur">
         <button id="local-file-btn" class="btn-secondary">📂 Depuis mon ordinateur</button>
         <div id="local-error" class="error-message hidden"></div>
         <div id="local-selected" class="selected-file hidden">

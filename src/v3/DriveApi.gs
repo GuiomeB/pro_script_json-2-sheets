@@ -48,7 +48,7 @@ function _runDriveQuery(query, accept) {
 function searchDriveJsonFiles(term) {
   const query = `title contains "${_escapeDriveQuery(term)}" and trashed = false`;
   return _runDriveQuery(query, function (file) {
-    return /\.json$/i.test(file.getName());
+    return /\.(json|txt)$/i.test(file.getName());
   });
 }
 

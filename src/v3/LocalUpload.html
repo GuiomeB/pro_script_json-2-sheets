@@ -21,8 +21,8 @@
     _handleFile: function (file) {
       LocalUpload._clearError();
 
-      if (!file.name.toLowerCase().endsWith('.json')) {
-        LocalUpload._showError('Ce fichier n\'est pas au format JSON. Veuillez choisir un fichier .json.');
+      if (!/\.(json|txt)$/i.test(file.name)) {
+        LocalUpload._showError('Format non supporté. Choisissez un fichier .json ou .txt.');
         return;
       }
       if (file.size === 0) {
