@@ -4,13 +4,15 @@ Deux outils complémentaires pour convertir des fichiers JSON en tableaux Google
 
 ---
 
-## v3 — Web App (recommandée)
+## v3 — « Json 2 Sheets » Web App (recommandée)
 
-Interface web déployée comme GAS Web App. Wizard 3 étapes : sélection de la source JSON, choix des champs, destination Sheets.
+Interface web déployée comme GAS Web App, accessible à toute l'organisation Google Workspace.
+Wizard 3 étapes : **source → champs → destination**, sans compétence technique requise.
+En-tête « Json 2 Sheets » avec un badge de version (ex. `v3.3`) synchronisé automatiquement depuis `package.json`.
 
 ### Fonctionnalités
 
-- Recherche d'un fichier JSON dans Google Drive (par extension `.json`) **ou** upload depuis l'ordinateur
+- **Source au choix**, frictionless : recherche par **nom** dans Google Drive, **collage d'une URL ou d'un ID** de fichier, ou **upload local** — formats `.json` **et** `.txt`
 - Extraction des champs, avec déballage automatique des enveloppes à clé unique (`[{infosMagasin:{…}}]` → vraies colonnes)
 - Sélection individuelle des champs à conserver
 - Destination : nouveau fichier Sheets **ou** ajout d'un onglet dans un fichier existant
@@ -33,20 +35,24 @@ Interface web déployée comme GAS Web App. Wizard 3 étapes : sélection de la 
 ```
 Fichiers serveur (.gs)
 ├── WebApp.gs         doGet() — point d'entrée, < 15 lignes
-├── JsonParser.gs     extractJsonFields() — analyse des champs JSON
+├── JsonParser.gs     extractJsonFields() — analyse + déballage des champs
 ├── SheetWriter.gs    convertJsonToSheet() — écriture dans Sheets
-└── DriveApi.gs       searchDriveJsonFiles() / searchDriveSheetsFiles()
+├── DriveApi.gs       recherche (.json/.txt), recherche Sheets, resolveDriveFile() (URL/ID)
+└── Version.gs        const APP_VERSION — GÉNÉRÉ depuis package.json (ne pas éditer)
 
 Fichiers client (.html assemblés par HtmlService)
-├── index.html        structure HTML + scriptlets d'assemblage
-├── Styles.html       CSS
+├── index.html        structure HTML + en-tête + scriptlets d'assemblage
+├── Styles.html       CSS (design SaaS + badge de version « gravé »)
 ├── App.html          contrôleur wizard + state + helpers UI partagés
-├── DriveSearch.html  module recherche Drive (étape 1)
+├── DriveSearch.html  module recherche Drive / résolution d'URL (étape 1)
 ├── LocalUpload.html  module upload local (étape 1)
 ├── AnalyseJson.html  module analyse JSON (transition 1→2)
 ├── FieldSelector.html module sélection des champs (étape 2)
 ├── Destination.html  module choix de destination (étape 3)
 └── Progression.html  module affichage progression/résultat + init
+
+Outillage
+└── scripts/inject-version.mjs   dérive « vMAJEUR.MINEUR » de package.json → src/v3/Version.gs
 ```
 
 ### Déploiement automatisé avec clasp
@@ -76,6 +82,8 @@ npm run redeploy -- <deploymentId>   # met à jour l'URL /exec
 | `npm run pull` | Récupère l'état distant (réconciliation) |
 | `npm run status` | Liste les fichiers qui seraient poussés |
 | `npm run open` | Ouvre l'éditeur Apps Script |
+
+> **Badge de version** : `npm run push` (et `npm run watch`) régénèrent `src/v3/Version.gs` depuis la version de `package.json` avant l'envoi. Pour publier une nouvelle version, bumpez `package.json` (ex. `npm version minor`) puis `npm run push` — le badge affiché dans l'app se met à jour seul.
 
 ---
 
