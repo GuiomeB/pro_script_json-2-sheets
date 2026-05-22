@@ -39,16 +39,21 @@ function _runDriveQuery(query, accept) {
 }
 
 /**
- * Recherche des fichiers JSON dans le Drive de l'utilisateur connecté.
- * Filtre sur l'extension .json plutôt que le MIME : Drive stocke les .json
- * tantôt en application/json, tantôt en text/plain — le MIME seul en manque.
+ * Recherche des fichiers .json / .txt dans le Drive de l'utilisateur connecté.
+ * Filtre sur l'extension (titre) plutôt que le MIME : Drive stocke les .json
+ * de façon incohérente (application/json, text/plain, octet-stream…) — le MIME en manque.
  * @param {string} term - Terme de recherche
  * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
  */
 function searchDriveJsonFiles(term) {
-  const query = `title contains "${_escapeDriveQuery(term)}" and trashed = false`;
+  // Restreint la requête par extension dans le titre (et non par MIME : Drive stocke les .json
+  // de façon incohérente). Évite que le plafond _DRIVE_MAX_SCAN soit épuisé par des fichiers
+  // sans rapport. Le regex côté script garde la précision (suffixe exact .json/.txt).
+  const safeTerm = _escapeDriveQuery(term);
+  const query = `title contains "${safeTerm}" and ` +
+    `(title contains ".json" or title contains ".txt") and trashed = false`;
   return _runDriveQuery(query, function (file) {
-    return /\.json$/i.test(file.getName());
+    return /\.(json|txt)$/i.test(file.getName());
   });
 }
 
