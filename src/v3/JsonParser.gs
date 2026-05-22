@@ -48,16 +48,40 @@ function _parseJson(jsonString) {
 }
 
 /**
+ * Déballe les enveloppes à clé unique pour atteindre les vraies colonnes.
+ * Ex. : { infosMagasin: { codeMagasin, nomMagasin, … } } → { codeMagasin, nomMagasin, … }.
+ * Descend tant que l'objet n'a qu'une seule clé pointant vers un objet simple.
+ * @param {*} value - Objet à déballer
+ * @returns {*} Objet déballé (ou la valeur d'origine si rien à déballer)
+ */
+function _unwrapSingleKey(value) {
+  let current = value;
+  while (
+    current && typeof current === 'object' && !Array.isArray(current) &&
+    Object.keys(current).length === 1
+  ) {
+    const inner = current[Object.keys(current)[0]];
+    if (inner && typeof inner === 'object' && !Array.isArray(inner)) {
+      current = inner;
+    } else {
+      break;
+    }
+  }
+  return current;
+}
+
+/**
  * Extrait les clés de premier niveau depuis un objet ou un tableau d'objets.
+ * Déballe au préalable les enveloppes à clé unique (cf. _unwrapSingleKey).
  * @param {*} parsed - Valeur JSON parsée
  * @returns {string[]} Clés de premier niveau
  */
 function _extractKeys(parsed) {
-  const obj = Array.isArray(parsed) ? parsed[0] : parsed;
-
   if (Array.isArray(parsed) && parsed.length === 0) {
     throw new Error('Ce fichier JSON ne contient aucune donnée à extraire.');
   }
+  const obj = _unwrapSingleKey(Array.isArray(parsed) ? parsed[0] : parsed);
+
   if (typeof obj !== 'object' || obj === null) {
     throw new Error('Ce fichier JSON ne contient pas de données structurées en colonnes.');
   }
@@ -77,5 +101,7 @@ function _extractKeys(parsed) {
 function _getConvertData(source) {
   const raw    = source.type === 'drive' ? source.id : source.content;
   const parsed = _parseJson(_readJsonSource(source.type, raw));
-  return Array.isArray(parsed) ? parsed : [parsed];
+  const rows   = Array.isArray(parsed) ? parsed : [parsed];
+  // Déballe chaque ligne comme _extractKeys → en-têtes et données restent alignés.
+  return rows.map(_unwrapSingleKey);
 }
