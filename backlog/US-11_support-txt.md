@@ -4,7 +4,7 @@
 
 ## Contexte technique
 
-Web App GAS v3 (`src/v3/`). La v3 n'accepte que les `.json` (upload local : `accept=".json"` +
+Web App GAS (`src/`). La v3 n'accepte que les `.json` (upload local : `accept=".json"` +
 validation `endsWith('.json')` ; recherche Drive : filtre `/\.json$/i`). La v2 acceptait des
 exports JSON enregistrés en `.txt` (elle ne filtrait pas l'extension, lisait le contenu et
 `JSON.parse`).

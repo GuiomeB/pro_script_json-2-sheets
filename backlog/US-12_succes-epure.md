@@ -4,7 +4,7 @@
 
 ## Contexte technique
 
-Web App GAS v3 (`src/v3/`). L'écran de fin de conversion (`Progression.showSuccess`) affiche une
+Web App GAS v3 (`src/`). L'écran de fin de conversion (`Progression.showSuccess`) affiche une
 carte verte avec « ✅ Votre fichier est prêt ! » au-dessus du bouton « Ouvrir le fichier → ».
 
 ## User Story
@@ -26,9 +26,9 @@ Scénario : Succès épuré (happy path)
 
 ## Implémentation
 
-- `src/v3/Progression.html` (`showSuccess`) : retirer le `<p>✅ Votre fichier est prêt !</p>`,
+- `src/Progression.html` (`showSuccess`) : retirer le `<p>✅ Votre fichier est prêt !</p>`,
   conserver le bouton `#btn-open`.
-- `src/v3/Styles.html` : retirer la règle `.result-card.success p` devenue inutile.
+- `src/Styles.html` : retirer la règle `.result-card.success p` devenue inutile.
 
 ## Vérification
 

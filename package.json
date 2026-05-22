@@ -2,7 +2,7 @@
   "name": "json-2-sheets",
   "version": "3.3.0",
   "private": true,
-  "description": "Conversion JSON → Google Sheets (Google Apps Script). v3 = Web App (src/v3), v2 = script lié au spreadsheet (src/gs).",
+  "description": "Json 2 Sheets — Web App Google Apps Script qui convertit un fichier JSON/.txt en tableau Google Sheets. Code dans src/.",
   "scripts": {
     "login": "clasp login",
     "push": "node scripts/inject-version.mjs && clasp push -f",

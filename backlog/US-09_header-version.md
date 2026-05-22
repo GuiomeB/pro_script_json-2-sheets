@@ -4,7 +4,7 @@
 
 ## Contexte technique
 
-Web App GAS v3 (`src/v3/`). Le header avait été retiré en v3.1 (remplacé par un `<h1 class="sr-only">`).
+Web App GAS v3 (`src/`). Le header avait été retiré en v3.1 (remplacé par un `<h1 class="sr-only">`).
 `index.html` est rendu via `createTemplateFromFile('index').evaluate()` → les scriptlets `<?= … ?>`
 sont évalués. clasp pousse les fichiers bruts (pas de build), d'où l'injection de version au push.
 
@@ -34,8 +34,8 @@ Scénario : Corrélation automatique de la version
 ## Implémentation
 
 - `package.json` : version `3.2.0` → `3.3.0` ; script `"push": "node scripts/inject-version.mjs && clasp push -f"`.
-- `scripts/inject-version.mjs` : lit `package.json`, dérive `v{major}.{minor}`, génère `src/v3/Version.gs` (`const APP_VERSION`).
-- `src/v3/Version.gs` : généré (committé, régénéré à chaque push).
+- `scripts/inject-version.mjs` : lit `package.json`, dérive `v{major}.{minor}`, génère `src/Version.gs` (`const APP_VERSION`).
+- `src/Version.gs` : généré (committé, régénéré à chaque push).
 - `index.html` : `<header class="app-header">` avec `<h1 class="app-title">Json 2 Sheets</h1>` + `<span class="version-badge"><?= APP_VERSION ?></span>` (remplace le `sr-only`) ; `<title>` → « Json 2 Sheets ».
 - `Styles.html` : `.app-header` (centré, relatif), `.version-badge` (absolu top-right, petit, `box-shadow: inset …` + `text-shadow` pour l'effet gravé).
 - `WebApp.gs` : `setTitle('Json 2 Sheets')` (cohérence onglet).
