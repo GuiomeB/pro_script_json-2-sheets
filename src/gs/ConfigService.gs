@@ -10,7 +10,8 @@ class ConfigService {
     this.keys = {
       FILE_ID: 'FILE_ID',
       ROOT_PATH: 'ROOT_PATH',
-      CHUNK_SIZE: 'CHUNK_SIZE'
+      CHUNK_SIZE: 'CHUNK_SIZE',
+      LAST_COLUMNS: 'LAST_COLUMNS'
     };
 
     this.defaults = {
@@ -50,6 +51,16 @@ class ConfigService {
     if (parsed > 0) {
       this.properties.setProperty(this.keys.CHUNK_SIZE, String(parsed));
     }
+  }
+
+  /** @returns {number} nombre de colonnes de la dernière extraction réussie, 0 si aucune */
+  getLastColumns() {
+    return Number(this.properties.getProperty(this.keys.LAST_COLUMNS)) || 0;
+  }
+
+  /** @param {number} count */
+  setLastColumns(count) {
+    this.properties.setProperty(this.keys.LAST_COLUMNS, String(count));
   }
 
   /** @returns {{ fileId: string, rootPath: string, chunkSize: number }} */

@@ -28,13 +28,15 @@ class SheetWriter {
 
   /**
    * Efface les données de la ligne 2 jusqu'à la dernière ligne (conserve les en-têtes).
-   * Utilise le max entre le nombre de colonnes actuel et celui de la feuille pour
-   * nettoyer également les colonnes orphelines d'une extraction précédente plus large.
+   * La borne haute est le max entre les colonnes courantes et celles de la dernière extraction
+   * connue, de façon à nettoyer les colonnes orphelines sans toucher aux colonnes helper
+   * éventuellement présentes à droite de la zone d'extraction.
    * @param {number} columnCount - nombre de colonnes de l'extraction courante
+   * @param {number} [previousColumnCount=0] - nombre de colonnes de la dernière extraction
    */
-  clearPreviousData(columnCount) {
+  clearPreviousData(columnCount, previousColumnCount = 0) {
     const lastRow = this.sheet.getLastRow();
-    const effectiveColumns = Math.max(columnCount, this.sheet.getLastColumn());
+    const effectiveColumns = Math.max(columnCount, previousColumnCount);
     if (lastRow <= 1 || effectiveColumns <= 0) return;
 
     this.sheet.getRange(2, 1, lastRow - 1, effectiveColumns).clearContent();
