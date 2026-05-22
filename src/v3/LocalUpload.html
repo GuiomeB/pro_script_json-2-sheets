@@ -43,7 +43,6 @@
         App.state.source = { type: 'local', content: content, name: file.name };
         document.getElementById('local-selected-name').textContent = file.name;
         document.getElementById('local-selected').classList.remove('hidden');
-        App.completeStep(1);
         App.unlockStep(2);
         AnalyseJson.run(App.state.source);
       };
