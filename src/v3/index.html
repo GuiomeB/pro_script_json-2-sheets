@@ -195,6 +195,18 @@
     .btn-primary:hover:not(:disabled) { background: #1557b0; }
     .btn-primary:disabled { background: #dadce0; color: #9aa0a6; cursor: not-allowed; }
 
+    /* ── US-05 : Destination ── */
+    .dest-modes { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .dest-mode-card { flex: 1; min-width: 160px; padding: 14px; border: 2px solid #dadce0; border-radius: 10px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; transition: border-color .15s, background .15s; }
+    .dest-mode-card input[type="radio"] { display: none; }
+    .dest-mode-card.selected { border-color: #1a73e8; background: #e8f0fe; }
+    .dest-mode-card:hover { border-color: #1a73e8; }
+    .dest-mode-title { font-size: 14px; font-weight: 500; color: #202124; }
+    .dest-mode-desc { font-size: 12px; color: #5f6368; }
+    .dest-form { margin-bottom: 20px; }
+    .dest-hint { font-size: 12px; color: #5f6368; margin-top: 8px; }
+    .btn-convert { margin-top: 8px; width: 100%; justify-content: center; padding: 12px 20px; font-size: 15px; }
+
     /* ── Utilitaires ── */
     .hidden { display: none !important; }
 
@@ -601,6 +613,7 @@
           .addEventListener('click', function () {
             App.completeStep(2);
             App.unlockStep(3);
+            Destination.render();
           });
       },
 
@@ -669,6 +682,103 @@
         if (n === 0) {
           counter.textContent += ' — Sélectionnez au moins un champ pour continuer.';
         }
+      },
+    };
+
+    /**
+     * Destination — gère les options de destination (étape 3).
+     * Rendu appelé par FieldSelector quand l'utilisateur valide l'étape 2.
+     * US-05 : mode "Nouveau fichier". US-06 viendra enrichir avec "Ajouter un onglet".
+     */
+    const Destination = {
+
+      /** Injecte le formulaire destination et le bouton Convertir dans le DOM. */
+      render: function () {
+        Destination._renderOptions();
+        Destination._renderConvertBtn();
+        Destination._prefillName();
+        Destination._validate();
+      },
+
+      _renderOptions: function () {
+        document.getElementById('destination-options').innerHTML =
+          '<div class="dest-modes">' +
+            '<label class="dest-mode-card selected" id="card-new">' +
+              '<input type="radio" name="dest-mode" value="new" checked>' +
+              '<span class="dest-mode-title">Nouveau fichier</span>' +
+              '<span class="dest-mode-desc">Crée un fichier Sheets dans Mon Drive</span>' +
+            '</label>' +
+            '<label class="dest-mode-card" id="card-tab">' +
+              '<input type="radio" name="dest-mode" value="tab">' +
+              '<span class="dest-mode-title">Ajouter un onglet</span>' +
+              '<span class="dest-mode-desc">Ajoute les données dans un fichier existant</span>' +
+            '</label>' +
+          '</div>' +
+          // Formulaire mode "Nouveau fichier"
+          '<div id="dest-new-form" class="dest-form">' +
+            '<label class="input-label" for="dest-file-name">Nom du fichier</label>' +
+            '<input type="text" id="dest-file-name" class="text-input" maxlength="100"' +
+              ' placeholder="Ex. : Export clients">' +
+            '<p class="dest-hint">📁 Le fichier sera créé dans Mon Drive</p>' +
+          '</div>' +
+          // Formulaire mode "Ajouter un onglet" (placeholder US-06)
+          '<div id="dest-tab-form" class="dest-form hidden">' +
+            '<!-- TODO US-06 -->' +
+          '</div>';
+
+        document.querySelectorAll('input[name="dest-mode"]').forEach(function (radio) {
+          radio.addEventListener('change', Destination._onModeChange);
+        });
+        document.getElementById('dest-file-name')
+          .addEventListener('input', Destination._validate);
+      },
+
+      _renderConvertBtn: function () {
+        document.getElementById('conversion-zone').innerHTML =
+          '<button id="btn-convert" class="btn-primary btn-convert" disabled>' +
+            'Convertir →' +
+          '</button>';
+        // TODO US-07 : brancher le handler de conversion sur btn-convert
+      },
+
+      /** Pré-remplit le nom du fichier à partir du nom de la source. */
+      _prefillName: function () {
+        const source = App.state.source;
+        if (!source) return;
+        const base = source.name.replace(/\.json$/i, '');
+        document.getElementById('dest-file-name').value = 'Export JSON — ' + base;
+      },
+
+      _onModeChange: function () {
+        const mode = document.querySelector('input[name="dest-mode"]:checked').value;
+        document.getElementById('dest-new-form').classList.toggle('hidden', mode !== 'new');
+        document.getElementById('dest-tab-form').classList.toggle('hidden', mode !== 'tab');
+        document.getElementById('card-new').classList.toggle('selected', mode === 'new');
+        document.getElementById('card-tab').classList.toggle('selected', mode === 'tab');
+        Destination._validate();
+      },
+
+      /** Active/désactive le bouton Convertir et synchronise App.state.destination. */
+      _validate: function () {
+        const mode = document.querySelector('input[name="dest-mode"]:checked').value;
+        let valid = false;
+        if (mode === 'new') {
+          const name = (document.getElementById('dest-file-name').value || '').trim();
+          valid = name.length > 0;
+        }
+        // La validation du mode 'tab' sera ajoutée par US-06
+        App.state.destination = Destination._buildConfig();
+        const btn = document.getElementById('btn-convert');
+        if (btn) btn.disabled = !valid;
+      },
+
+      _buildConfig: function () {
+        const mode = document.querySelector('input[name="dest-mode"]:checked').value;
+        if (mode === 'new') {
+          const name = (document.getElementById('dest-file-name').value || '').trim();
+          return { mode: 'new', fileName: name };
+        }
+        return { mode: 'tab' }; // US-06 enrichira cet objet
       },
     };
 
