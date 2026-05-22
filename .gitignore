@@ -1,8 +1,5 @@
 .DS_Store
 node_modules/
 
-# clasp — copie locale de travail (clasp y ajoute des champs spécifiques à la machine).
-# Modèle versionné : .clasp.json.example
-.clasp.json
-# OAuth credentials globales clasp (normalement dans ~/.clasprc.json, par sécurité)
+# OAuth credentials clasp — SECRET, ne jamais versionner (normalement dans ~/.clasprc.json)
 .clasprc.json

@@ -53,10 +53,11 @@ Fichiers client (.html assemblés par HtmlService)
 
 ```bash
 npm install            # installe clasp en local (devDependency)
-cp .clasp.json.example .clasp.json   # config locale (gitignorée)
 npm run login          # authentification Google (une seule fois)
 npm run push           # envoie src/v3/ vers le projet GAS
 ```
+
+> `.clasp.json` (scriptId + rootDir) est versionné. Seul `~/.clasprc.json` (jetons OAuth) reste secret et n'est jamais commité.
 
 Itération rapide : après `npm run push`, rafraîchir l'**URL `/dev`** du projet (toujours à jour, accessible au propriétaire) — aucun redéploiement nécessaire.
 
