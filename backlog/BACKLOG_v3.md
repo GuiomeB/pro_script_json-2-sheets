@@ -195,3 +195,15 @@ graph TD
 | Source JSON depuis une URL externe / API | Si demande utilisateur avérée |
 | Sélection des sous-champs (profondeur > niveau 1) | Évolution naturelle après stabilisation v3 |
 | Drive Picker natif (navigation visuelle dans l'arborescence) pour US-02 | Requiert clé API GCP — évolution de US-02 quand setup GCP accepté |
+
+---
+
+## Remédiations post-livraison
+
+| Version | Contenu | PR |
+|---|---|---|
+| **v3.1** | Correction du rendu (`createTemplateFromFile().evaluate()`), refresh UI/UX (SaaS moderne, suppression header/stepper), renommage `DriveSearch.gs` → `DriveApi.gs` | #6 |
+| **v3.2** | Déballage des enveloppes JSON à clé unique (1er pas vers « profondeur > niveau 1 »), recherche Drive par extension `.json`, icône Drive, centrage boutons | #8 |
+| **clasp** | Déploiement automatisé `npm run push` (fin du copier-coller) | #9 |
+
+> La sélection des sous-champs au-delà d'un wrapper unique reste reportée (cf. tableau ci-dessus) : v3.2 ne déballe que les enveloppes à **clé unique**.

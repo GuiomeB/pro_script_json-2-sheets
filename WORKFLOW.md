@@ -34,6 +34,20 @@ Follow the global git workflow (`~/.claude/rules/git-workflow.md`):
 
 ---
 
+## Déploiement (v3 Web App)
+
+Le code `src/v3/` est synchronisé avec Apps Script via clasp — plus de copier-coller manuel.
+
+1. **Une seule fois** : `npm install` puis `npm run login` (OAuth Google, compte propriétaire du script)
+2. **À chaque changement** : `npm run push` (envoie `src/v3/` vers le projet GAS)
+3. **Tester** : ouvrir l'URL `/dev` du script — reflète le HEAD immédiatement, pas de redéploiement
+4. **Publier** sur l'URL `/exec` partagée : `npm run deployments` puis `npm run redeploy -- <deploymentId>`
+
+`.clasp.json` (scriptId + rootDir) est versionné ; seul `~/.clasprc.json` (jetons OAuth) reste secret.
+La validation des tâches v3 se fait après `npm run push` (aucun framework de test automatisé).
+
+---
+
 ## Coding standards
 
 Follow the global standards (`~/.claude/rules/coding-standards.md`):

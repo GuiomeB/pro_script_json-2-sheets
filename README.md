@@ -10,8 +10,8 @@ Interface web déployée comme GAS Web App. Wizard 3 étapes : sélection de la 
 
 ### Fonctionnalités
 
-- Recherche d'un fichier JSON dans Google Drive **ou** upload depuis l'ordinateur
-- Extraction automatique des champs de premier niveau
+- Recherche d'un fichier JSON dans Google Drive (par extension `.json`) **ou** upload depuis l'ordinateur
+- Extraction des champs, avec déballage automatique des enveloppes à clé unique (`[{infosMagasin:{…}}]` → vraies colonnes)
 - Sélection individuelle des champs à conserver
 - Destination : nouveau fichier Sheets **ou** ajout d'un onglet dans un fichier existant
 - Détection et conversion automatique des dates ISO 8601 en cellules de date Sheets
@@ -19,12 +19,14 @@ Interface web déployée comme GAS Web App. Wizard 3 étapes : sélection de la 
 
 ### Déploiement
 
-1. Créer un nouveau projet Apps Script sur [script.google.com](https://script.google.com)
-2. Copier chaque fichier de `src/v3/` dans un fichier dédié du projet (**respecter le nom exact**)
-3. `Déployer > Nouveau déploiement > Application Web`
-   - Exécuter en tant que : **Moi**
-   - Accès : **Tous les utilisateurs de mon organisation** (ou Moi uniquement pour les tests)
-4. Copier l'URL de déploiement et l'ouvrir dans un navigateur
+**Première mise en place** (une fois) :
+1. Créer un projet Apps Script sur [script.google.com](https://script.google.com) et reporter son scriptId dans `.clasp.json`
+2. `Déployer > Nouveau déploiement > Application Web`
+   - Exécuter en tant que : **Utilisateur accédant à l'application web**
+   - Accès : **Tous les utilisateurs de mon organisation** (cf. `src/v3/appsscript.json`)
+3. Ouvrir l'URL `/exec`
+
+**Synchroniser le code** ensuite : `npm run push` — voir [Déploiement automatisé avec clasp](#déploiement-automatisé-avec-clasp).
 
 ### Structure `src/v3/`
 
