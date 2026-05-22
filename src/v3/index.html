@@ -4,36 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JSON → Sheets</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <?!= HtmlService.createHtmlOutputFromFile('Styles').getContent(); ?>
 </head>
 <body>
   <div class="app-container">
 
-    <header class="app-header">
-      <h1>JSON → Sheets</h1>
-      <p>Transformez vos fichiers JSON en tableaux Google Sheets en quelques clics.</p>
-    </header>
-
-    <!-- Indicateur d'étapes -->
-    <nav class="steps-nav" aria-label="Étapes de conversion">
-      <div class="step-item active" id="step-nav-1">
-        <div class="step-circle">1</div>
-        <span class="step-label">Source</span>
-      </div>
-      <div class="step-connector" id="connector-1"></div>
-      <div class="step-item locked" id="step-nav-2">
-        <div class="step-circle">2</div>
-        <span class="step-label">Champs</span>
-      </div>
-      <div class="step-connector" id="connector-2"></div>
-      <div class="step-item locked" id="step-nav-3">
-        <div class="step-circle">3</div>
-        <span class="step-label">Destination</span>
-      </div>
-    </nav>
+    <h1 class="sr-only">JSON → Sheets</h1>
 
     <!-- ── Panneau 1 : Source ── -->
-    <section class="step-panel active" id="panel-1" aria-labelledby="panel-1-title">
+    <section class="step-panel" id="panel-1" aria-labelledby="panel-1-title">
       <h2 id="panel-1-title" class="panel-title">Choisissez votre fichier JSON</h2>
       <p class="panel-desc">Indiquez le fichier JSON que vous souhaitez transformer en tableau.</p>
 

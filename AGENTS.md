@@ -52,7 +52,7 @@ Never load large documents "just in case".
 
 | Fichier | Rôle | Règle |
 |---|---|---|
-| `WebApp.gs` | `doGet()` uniquement — point d'entrée | < 15 lignes, aucune logique métier |
+| `WebApp.gs` | `doGet()` uniquement — point d'entrée | `createTemplateFromFile('index').evaluate()`, jamais `createHtmlOutputFromFile` |
 | `*.gs` | Un fichier par domaine métier | `JsonParser.gs`, `SheetWriter.gs`, `DriveApi.gs` |
 | `index.html` | Structure HTML + scriptlets d'assemblage | Aucun CSS ni JS inline |
 | `Styles.html` | `<style>` uniquement | Pas de DOCTYPE |
@@ -60,6 +60,8 @@ Never load large documents "just in case".
 | `*.html` | Un fragment par module JS | PascalCase = nom de l'objet JS dedans |
 
 > ⚠️ **Contrainte GAS** : deux fichiers ne peuvent pas partager le même nom, même avec des extensions différentes (`.gs` vs `.html`). Si un module JS client porte le même nom qu'un fichier `.gs`, renommer le `.gs` en ajoutant un suffixe sémantique (`DriveSearch.html` + `DriveApi.gs`).
+>
+> ⚠️ **Évaluation des scriptlets** : `doGet` doit servir la page via `HtmlService.createTemplateFromFile('index').evaluate()`. Avec `createHtmlOutputFromFile`, les `<?!= … ?>` ne sont **pas** évalués → la page rend du HTML nu (ni CSS ni JS injectés).
 
 ### Règles d'assemblage
 

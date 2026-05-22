@@ -14,23 +14,13 @@
     },
 
     /**
-     * Déverrouille un panneau et met à jour l'indicateur de navigation.
-     * Fait défiler la page vers le panneau déverrouillé.
+     * Déverrouille un panneau et fait défiler la page vers lui.
      * @param {number} stepNumber
      */
     unlockStep: function (stepNumber) {
-      const panel     = document.getElementById('panel-'     + stepNumber);
-      const nav       = document.getElementById('step-nav-'  + stepNumber);
-      const connector = document.getElementById('connector-' + (stepNumber - 1));
-
-      if (!panel || !nav) return;
-
+      const panel = document.getElementById('panel-' + stepNumber);
+      if (!panel) return;
       panel.classList.remove('locked');
-      nav.classList.remove('locked');
-      nav.classList.add('unlocked');
-
-      if (connector) connector.classList.add('active');
-
       panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
 
@@ -39,26 +29,8 @@
      * @param {number} stepNumber
      */
     lockStep: function (stepNumber) {
-      const panel     = document.getElementById('panel-'     + stepNumber);
-      const nav       = document.getElementById('step-nav-'  + stepNumber);
-      const connector = document.getElementById('connector-' + (stepNumber - 1));
+      const panel = document.getElementById('panel-' + stepNumber);
       if (panel) panel.classList.add('locked');
-      if (nav) {
-        nav.classList.remove('unlocked', 'completed');
-        nav.classList.add('locked');
-      }
-      if (connector) connector.classList.remove('active');
-    },
-
-    /**
-     * Marque une étape comme complétée (indicateur vert).
-     * @param {number} stepNumber
-     */
-    completeStep: function (stepNumber) {
-      const nav = document.getElementById('step-nav-' + stepNumber);
-      if (!nav) return;
-      nav.classList.remove('active', 'unlocked', 'locked');
-      nav.classList.add('completed');
     },
 
     /**
