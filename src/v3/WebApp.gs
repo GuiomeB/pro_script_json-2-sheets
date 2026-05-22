@@ -92,6 +92,26 @@ function _extractKeys(parsed) {
  * @param {string} term - Terme de recherche (contenu dans le nom du fichier)
  * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
  */
+/**
+ * Recherche des fichiers Google Sheets dans le Drive de l'utilisateur connecté.
+ * Appelée via google.script.run par le module Destination (mode "Ajouter un onglet").
+ *
+ * @param {string} term - Terme de recherche (contenu dans le nom du fichier)
+ * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
+ */
+function searchDriveSheetsFiles(term) {
+  const query = `title contains "${term}" and mimeType = "application/vnd.google-apps.spreadsheet" and trashed = false`;
+  const iterator = DriveApp.searchFiles(query);
+  const results = [];
+
+  while (iterator.hasNext() && results.length < 10) {
+    const file = iterator.next();
+    results.push({ id: file.getId(), name: file.getName() });
+  }
+
+  return results;
+}
+
 function searchDriveJsonFiles(term) {
   const query = `title contains "${term}" and mimeType = "application/json" and trashed = false`;
   const iterator = DriveApp.searchFiles(query);

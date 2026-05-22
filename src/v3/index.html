@@ -721,9 +721,26 @@
               ' placeholder="Ex. : Export clients">' +
             '<p class="dest-hint">📁 Le fichier sera créé dans Mon Drive</p>' +
           '</div>' +
-          // Formulaire mode "Ajouter un onglet" (placeholder US-06)
+          // Formulaire mode "Ajouter un onglet" (US-06)
           '<div id="dest-tab-form" class="dest-form hidden">' +
-            '<!-- TODO US-06 -->' +
+            '<label class="input-label" for="sheets-search-input">Rechercher un fichier Sheets</label>' +
+            '<div class="search-wrapper">' +
+              '<input type="text" id="sheets-search-input" class="text-input"' +
+                ' placeholder="Tapez le nom du fichier Sheets cible…" autocomplete="off">' +
+              '<span id="sheets-search-spinner" class="input-spinner hidden"></span>' +
+            '</div>' +
+            '<ul id="sheets-search-results" class="results-list hidden" role="listbox"></ul>' +
+            '<div id="sheets-search-message" class="search-message hidden"></div>' +
+            '<div id="sheets-selected" class="selected-file hidden">' +
+              '<span class="selected-icon">✓</span>' +
+              '<span id="sheets-selected-name" class="selected-name"></span>' +
+              '<button id="sheets-clear-btn" class="clear-btn" aria-label="Effacer la sélection">×</button>' +
+            '</div>' +
+            '<div id="tab-name-section" class="hidden" style="margin-top:16px">' +
+              '<label class="input-label" for="dest-tab-name">Nom de l\'onglet</label>' +
+              '<input type="text" id="dest-tab-name" class="text-input" maxlength="100">' +
+              '<p class="dest-hint">💡 Ce nom peut être modifié avant de convertir.</p>' +
+            '</div>' +
           '</div>';
 
         document.querySelectorAll('input[name="dest-mode"]').forEach(function (radio) {
@@ -731,6 +748,7 @@
         });
         document.getElementById('dest-file-name')
           .addEventListener('input', Destination._validate);
+        Destination._initTabSearch();
       },
 
       _renderConvertBtn: function () {
@@ -766,7 +784,11 @@
           const name = (document.getElementById('dest-file-name').value || '').trim();
           valid = name.length > 0;
         }
-        // La validation du mode 'tab' sera ajoutée par US-06
+        if (mode === 'tab') {
+          const tabNameEl = document.getElementById('dest-tab-name');
+          const tabName   = tabNameEl ? tabNameEl.value.trim() : '';
+          valid = !!(Destination._selectedSpreadsheet && tabName.length > 0);
+        }
         App.state.destination = Destination._buildConfig();
         const btn = document.getElementById('btn-convert');
         if (btn) btn.disabled = !valid;
@@ -778,7 +800,114 @@
           const name = (document.getElementById('dest-file-name').value || '').trim();
           return { mode: 'new', fileName: name };
         }
-        return { mode: 'tab' }; // US-06 enrichira cet objet
+        const tabNameEl = document.getElementById('dest-tab-name');
+        return {
+          mode: 'tab',
+          spreadsheetId: Destination._selectedSpreadsheet
+            ? Destination._selectedSpreadsheet.id : null,
+          tabName: tabNameEl ? (tabNameEl.value || '').trim() : '',
+        };
+      },
+
+      // ── Recherche Sheets (mode "Ajouter un onglet") ──
+
+      _selectedSpreadsheet: null,
+      _tabTimer: null,
+
+      _initTabSearch: function () {
+        document.getElementById('sheets-search-input')
+          .addEventListener('input', function () { Destination._onTabInput(this.value); });
+        document.getElementById('sheets-clear-btn')
+          .addEventListener('click', Destination._clearTabSelection);
+      },
+
+      _onTabInput: function (value) {
+        clearTimeout(Destination._tabTimer);
+        Destination._hideTabDropdown();
+        if (value.trim().length < 2) return;
+        Destination._tabTimer = setTimeout(function () {
+          Destination._searchSheets(value.trim());
+        }, 300);
+      },
+
+      _searchSheets: function (term) {
+        Destination._setTabSpinner(true);
+        google.script.run
+          .withSuccessHandler(Destination._renderSheetsResults)
+          .withFailureHandler(function () {
+            Destination._setTabSpinner(false);
+            Destination._showTabMessage(
+              'Impossible d\'accéder à votre Drive. Rechargez la page et réessayez.'
+            );
+          })
+          .searchDriveSheetsFiles(term);
+      },
+
+      _renderSheetsResults: function (results) {
+        Destination._setTabSpinner(false);
+        const list = document.getElementById('sheets-search-results');
+        list.innerHTML = '';
+        if (!results.length) {
+          Destination._showTabMessage('Aucun fichier Sheets trouvé pour cette recherche.');
+          return;
+        }
+        results.forEach(function (file) {
+          const li = document.createElement('li');
+          li.className = 'result-item';
+          li.setAttribute('role', 'option');
+          li.textContent = file.name;
+          li.addEventListener('click', function () { Destination._selectSheets(file); });
+          list.appendChild(li);
+        });
+        list.classList.remove('hidden');
+      },
+
+      _selectSheets: function (file) {
+        Destination._selectedSpreadsheet = file;
+        document.getElementById('sheets-search-input').value = '';
+        Destination._hideTabDropdown();
+        document.getElementById('sheets-selected-name').textContent = file.name;
+        document.getElementById('sheets-selected').classList.remove('hidden');
+        // Affiche le champ nom d'onglet avec l'horodatage par défaut
+        const section  = document.getElementById('tab-name-section');
+        const tabInput = document.getElementById('dest-tab-name');
+        if (!tabInput.value) tabInput.value = Destination._defaultTabName();
+        section.classList.remove('hidden');
+        tabInput.addEventListener('input', Destination._validate);
+        Destination._validate();
+      },
+
+      _clearTabSelection: function () {
+        Destination._selectedSpreadsheet = null;
+        document.getElementById('sheets-search-input').value = '';
+        document.getElementById('sheets-selected').classList.add('hidden');
+        document.getElementById('sheets-selected-name').textContent = '';
+        document.getElementById('tab-name-section').classList.add('hidden');
+        document.getElementById('dest-tab-name').value = '';
+        Destination._validate();
+      },
+
+      /** Génère le nom d'onglet par défaut horodaté. */
+      _defaultTabName: function () {
+        const d   = new Date();
+        const pad = function (n) { return String(n).padStart(2, '0'); };
+        return 'Export_' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+               '_' + pad(d.getHours()) + 'h' + pad(d.getMinutes());
+      },
+
+      _hideTabDropdown: function () {
+        document.getElementById('sheets-search-results').classList.add('hidden');
+        document.getElementById('sheets-search-message').classList.add('hidden');
+      },
+
+      _setTabSpinner: function (show) {
+        document.getElementById('sheets-search-spinner').classList.toggle('hidden', !show);
+      },
+
+      _showTabMessage: function (msg) {
+        const el = document.getElementById('sheets-search-message');
+        el.textContent = msg;
+        el.classList.remove('hidden');
       },
     };
 
