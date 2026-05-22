@@ -57,11 +57,11 @@ graph TD
 
 ---
 
-### US-02 — Source : Drive Picker
+### US-02 — Source : Drive Search
 
 > En tant qu'utilisateur,
-> je veux pouvoir choisir un fichier JSON depuis mon Google Drive via un sélecteur natif Google,
-> afin de ne pas avoir à chercher et copier-coller une URL technique.
+> je veux pouvoir rechercher un fichier JSON depuis mon Google Drive en tapant son nom,
+> afin de le sélectionner sans avoir à chercher et copier-coller une URL technique.
 
 **Taille :** M
 **Dépend de :** US-01
@@ -194,3 +194,4 @@ graph TD
 | Mode "Remplacer les données" d'un onglet existant | Si demande utilisateur avérée |
 | Source JSON depuis une URL externe / API | Si demande utilisateur avérée |
 | Sélection des sous-champs (profondeur > niveau 1) | Évolution naturelle après stabilisation v3 |
+| Drive Picker natif (navigation visuelle dans l'arborescence) pour US-02 | Requiert clé API GCP — évolution de US-02 quand setup GCP accepté |

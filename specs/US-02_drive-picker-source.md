@@ -1,14 +1,18 @@
-# US-02 — Source : Drive Picker
+# US-02 — Source : Drive Search
 
 ## User Story
 
 En tant qu'utilisateur,
-je veux pouvoir choisir un fichier JSON depuis mon Google Drive via un sélecteur natif Google,
-afin de ne pas avoir à chercher et copier-coller une URL technique.
+je veux pouvoir rechercher un fichier JSON depuis mon Google Drive en tapant son nom,
+afin de le sélectionner sans avoir à chercher et copier-coller une URL technique.
 
 **Taille :** M
 **Dépend de :** US-01
 **Bloque :** US-04a (en tant que source alternative à US-03)
+
+> **Décision produit :** Cette US implémente une recherche par nom de fichier (pas de Drive Picker natif).
+> Le Drive Picker (navigation visuelle dans l'arborescence) est reporté en évolution v3.x — il requiert
+> une clé API Google Cloud Platform supplémentaire.
 
 ---
 
@@ -16,68 +20,69 @@ afin de ne pas avoir à chercher et copier-coller une URL technique.
 
 | Élément | Détail |
 |---|---|
-| API client | Google Picker API (JavaScript, chargée via `gapi`) |
-| Token OAuth | Récupéré côté serveur via `ScriptApp.getOAuthToken()`, passé au client via `google.script.run` |
-| Filtre MIME | `application/json` uniquement dans le picker |
-| Résultat retourné | ID du fichier Drive (ex. `1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms`) |
-| Durée de vie du token | ~1h — le token doit être rafraîchi si la session dure longtemps |
+| Recherche | `DriveApp.searchFiles('title contains "terme" and mimeType = "application/json"')` côté serveur |
+| Appel | `google.script.run` avec le terme saisi par l'utilisateur |
+| Résultats | Tableau `[{ id, name }]` retourné au client |
+| Déclenchement | Recherche lancée après 300 ms d'inactivité dans le champ (debounce) ou sur appui Entrée |
+| Retour attendu | ID du fichier Drive sélectionné par l'utilisateur dans la liste |
+| Limite de résultats | 10 résultats max affichés (éviter les listes interminables) |
 
-> **Contrainte :** La Google Picker API nécessite une clé API Google Cloud activée pour le projet GAS. Elle ne fonctionne pas avec uniquement le token OAuth.
+> **Contrainte :** `DriveApp.searchFiles()` ne cherche que dans les fichiers accessibles par l'utilisateur connecté (son Drive + partagés avec lui). Pas de clé API GCP requise.
 
 ---
 
 ## Scénarios Gherkin
 
 ```gherkin
-Fonctionnalité: Sélection du fichier JSON source depuis Google Drive
+Fonctionnalité: Recherche d'un fichier JSON source depuis Google Drive
 
-  Scénario: Sélection réussie d'un fichier JSON
+  Scénario: Recherche avec résultats
     Étant donné que je suis à l'étape 1 "Source"
-    Quand je clique sur "Choisir depuis Google Drive"
-    Alors la fenêtre Drive Picker s'ouvre
-    Et seuls les fichiers .json sont visibles et sélectionnables
-    Quand je sélectionne un fichier JSON
-    Alors la fenêtre se ferme automatiquement
-    Et le nom du fichier sélectionné s'affiche dans l'étape 1
+    Quand je tape au moins 2 caractères dans le champ "Rechercher dans Drive"
+    Alors une liste déroulante affiche les fichiers .json correspondants (10 max)
+    Et chaque résultat affiche le nom du fichier
+    Quand je clique sur un résultat
+    Alors le nom du fichier sélectionné s'affiche dans l'étape 1
     Et l'étape 1 se marque comme complétée
     Et l'étape 2 "Champs" se déverrouille
 
-  Scénario: Fermeture du picker sans sélection
-    Étant donné que la fenêtre Drive Picker est ouverte
-    Quand je ferme la fenêtre sans sélectionner de fichier
-    Alors l'étape 1 reste dans son état initial sans message d'erreur
+  Scénario: Recherche sans résultat
+    Étant donné que je tape un terme qui ne correspond à aucun fichier .json dans mon Drive
+    Alors la liste affiche un message : "Aucun fichier JSON trouvé pour cette recherche."
+    Et une suggestion invite à utiliser l'option "Depuis mon ordinateur"
 
-  Scénario: Drive ne contient aucun fichier JSON
-    Étant donné que mon Drive ne contient aucun fichier .json
-    Quand j'ouvre le picker
-    Alors le picker s'affiche avec un état vide
-    Et un message suggère d'utiliser l'option "Depuis mon ordinateur"
+  Scénario: Effacement du champ après sélection
+    Étant donné qu'un fichier est déjà sélectionné
+    Quand je modifie le contenu du champ de recherche
+    Alors la sélection précédente est annulée
+    Et l'étape 1 repasse en état initial jusqu'à une nouvelle sélection
 
-  Scénario: Échec de récupération du token OAuth
-    Étant donné que la récupération du token côté serveur échoue
-    Quand je clique sur "Choisir depuis Google Drive"
+  Scénario: Erreur d'accès Drive (quota GAS ou perte de session)
+    Étant donné qu'une erreur survient lors de l'appel serveur
     Alors un message s'affiche : "Impossible d'accéder à votre Drive. Rechargez la page et réessayez."
-    Et le picker ne s'ouvre pas
+    Et la liste ne s'affiche pas
 ```
 
 ---
 
 ## Critères d'acceptance
 
-- [ ] Le bouton "Choisir depuis Google Drive" est visible dans l'étape 1
-- [ ] Le picker filtre exclusivement sur les fichiers JSON (MIME `application/json`)
-- [ ] Après sélection, le nom du fichier est affiché dans l'UI
-- [ ] L'ID du fichier est conservé en mémoire client pour transmission à US-04a
-- [ ] Annuler le picker ne provoque aucun état erroné
-- [ ] Toute erreur d'accès Drive affiche un message compréhensible (pas de stack trace)
+- [ ] Le champ de recherche est visible dans l'étape 1
+- [ ] La recherche se déclenche à partir de 2 caractères saisis
+- [ ] Les résultats sont filtrés sur les fichiers JSON uniquement
+- [ ] Maximum 10 résultats affichés
+- [ ] Un clic sur un résultat sélectionne le fichier et complète l'étape 1
+- [ ] L'absence de résultat affiche un message utile (pas une liste vide silencieuse)
+- [ ] Modifier le champ après sélection réinitialise la sélection
+- [ ] L'ID du fichier est conservé en mémoire client pour US-04a
 
 ---
 
 ## Définition of Done
 
-- [ ] Picker API initialisée avec clé API + token OAuth
-- [ ] Filtre MIME `.json` actif et vérifié
-- [ ] Token récupéré depuis le serveur GAS via `google.script.run`
-- [ ] Nom du fichier affiché après sélection
-- [ ] ID du fichier accessible pour l'étape suivante
-- [ ] Testé : sélection, annulation, Drive sans JSON, erreur réseau simulée
+- [ ] Fonction serveur `searchDriveJsonFiles(term)` implémentée avec `DriveApp.searchFiles()`
+- [ ] Retourne `[{ id, name }]`, max 10 résultats
+- [ ] Debounce 300 ms côté client avant déclenchement de l'appel
+- [ ] Liste déroulante de résultats avec sélection au clic
+- [ ] Message explicite si aucun résultat
+- [ ] Testé : résultats trouvés, aucun résultat, erreur serveur, modification après sélection
