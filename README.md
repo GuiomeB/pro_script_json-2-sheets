@@ -47,6 +47,34 @@ Fichiers client (.html assemblés par HtmlService)
 └── Progression.html  module affichage progression/résultat + init
 ```
 
+### Déploiement automatisé avec clasp
+
+`clasp` synchronise `src/v3/` avec le projet Apps Script — fini le copier-coller manuel.
+
+```bash
+npm install            # installe clasp en local (devDependency)
+npm run login          # authentification Google (une seule fois)
+npm run push           # envoie src/v3/ vers le projet GAS
+```
+
+> `.clasp.json` (scriptId + rootDir) est versionné. Seul `~/.clasprc.json` (jetons OAuth) reste secret et n'est jamais commité.
+
+Itération rapide : après `npm run push`, rafraîchir l'**URL `/dev`** du projet (toujours à jour, accessible au propriétaire) — aucun redéploiement nécessaire.
+
+Publier sur l'URL **`/exec`** (partagée) : il faut pointer le déploiement sur une nouvelle version.
+```bash
+npm run deployments              # liste les deploymentId
+npm run redeploy -- <deploymentId>   # met à jour l'URL /exec
+```
+
+| Script | Action |
+|---|---|
+| `npm run push` | Pousse le code (force, écrase le manifest distant) |
+| `npm run watch` | Pousse automatiquement à chaque sauvegarde locale |
+| `npm run pull` | Récupère l'état distant (réconciliation) |
+| `npm run status` | Liste les fichiers qui seraient poussés |
+| `npm run open` | Ouvre l'éditeur Apps Script |
+
 ---
 
 ## v2 — Script spreadsheet (legacy)

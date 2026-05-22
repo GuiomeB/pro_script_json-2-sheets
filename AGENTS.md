@@ -40,9 +40,10 @@ Never load large documents "just in case".
 
 | Purpose | Command |
 |---|---|
-| Déployer / tester | Copier les `.gs` dans l'éditeur Apps Script du spreadsheet cible |
+| Déployer v3 (Web App) | `npm run push` (clasp → `src/v3/`). Voir README pour login/redeploy. |
+| Déployer v2 (legacy) | Copier les `.gs` de `src/gs/` dans l'éditeur Apps Script du spreadsheet cible |
 | Lint local | `<lint command>` — aucun outil local configuré à ce stade |
-| Tests | Aucun framework de test configuré — validation manuelle dans le spreadsheet |
+| Tests | Aucun framework de test configuré — validation manuelle après `npm run push` |
 
 ---
 
