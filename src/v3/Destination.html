@@ -1,0 +1,231 @@
+<script>
+  /**
+   * Destination — gère les options de destination (étape 3).
+   * Mode "Nouveau fichier" (US-05) et "Ajouter un onglet" (US-06).
+   */
+  const Destination = {
+
+    /** Injecte le formulaire destination et le bouton Convertir dans le DOM. */
+    render: function () {
+      // Réinitialise l'état en mémoire : évite le décalage UI/JS si render() est rappelé.
+      Destination._selectedSpreadsheet = null;
+      Destination._renderOptions();
+      Destination._renderConvertBtn();
+      Destination._prefillName();
+      Destination._validate();
+    },
+
+    _renderOptions: function () {
+      document.getElementById('destination-options').innerHTML =
+        '<div class="dest-modes">' +
+          '<label class="dest-mode-card selected" id="card-new">' +
+            '<input type="radio" name="dest-mode" value="new" checked>' +
+            '<span class="dest-mode-title">Nouveau fichier</span>' +
+            '<span class="dest-mode-desc">Crée un fichier Sheets dans Mon Drive</span>' +
+          '</label>' +
+          '<label class="dest-mode-card" id="card-tab">' +
+            '<input type="radio" name="dest-mode" value="tab">' +
+            '<span class="dest-mode-title">Ajouter un onglet</span>' +
+            '<span class="dest-mode-desc">Ajoute les données dans un fichier existant</span>' +
+          '</label>' +
+        '</div>' +
+        '<div id="dest-new-form" class="dest-form">' +
+          '<label class="input-label" for="dest-file-name">Nom du fichier</label>' +
+          '<input type="text" id="dest-file-name" class="text-input" maxlength="100"' +
+            ' placeholder="Ex. : Export clients">' +
+          '<p class="dest-hint">📁 Le fichier sera créé dans Mon Drive</p>' +
+        '</div>' +
+        '<div id="dest-tab-form" class="dest-form hidden">' +
+          '<label class="input-label" for="sheets-search-input">Rechercher un fichier Sheets</label>' +
+          '<div class="search-wrapper">' +
+            '<input type="text" id="sheets-search-input" class="text-input"' +
+              ' placeholder="Tapez le nom du fichier Sheets cible…" autocomplete="off">' +
+            '<span id="sheets-search-spinner" class="input-spinner hidden"></span>' +
+          '</div>' +
+          '<ul id="sheets-search-results" class="results-list hidden" role="listbox"></ul>' +
+          '<div id="sheets-search-message" class="search-message hidden"></div>' +
+          '<div id="sheets-selected" class="selected-file hidden">' +
+            '<span class="selected-icon">✓</span>' +
+            '<span id="sheets-selected-name" class="selected-name"></span>' +
+            '<button id="sheets-clear-btn" class="clear-btn" aria-label="Effacer la sélection">×</button>' +
+          '</div>' +
+          '<div id="tab-name-section" class="hidden" style="margin-top:16px">' +
+            '<label class="input-label" for="dest-tab-name">Nom de l\'onglet</label>' +
+            '<input type="text" id="dest-tab-name" class="text-input" maxlength="30">' +
+            '<p class="dest-hint">💡 Ce nom peut être modifié avant de convertir.</p>' +
+          '</div>' +
+        '</div>';
+
+      document.querySelectorAll('input[name="dest-mode"]').forEach(function (radio) {
+        radio.addEventListener('change', Destination._onModeChange);
+      });
+      document.getElementById('dest-file-name')
+        .addEventListener('input', Destination._validate);
+      Destination._initTabSearch();
+    },
+
+    _renderConvertBtn: function () {
+      document.getElementById('conversion-zone').innerHTML =
+        '<button id="btn-convert" class="btn-primary btn-convert" disabled>' +
+          'Convertir →' +
+        '</button>' +
+        '<div id="progress-zone" class="progress-zone hidden"></div>';
+      document.getElementById('btn-convert')
+        .addEventListener('click', Destination._onConvert);
+    },
+
+    _onConvert: function () {
+      const btn = document.getElementById('btn-convert');
+      btn.disabled = true;
+      Progression.start();
+      google.script.run
+        .withSuccessHandler(function (url) {
+          Progression.showSuccess(url);
+        })
+        .withFailureHandler(function (error) {
+          btn.disabled = false;
+          Progression.showError(error.message);
+        })
+        .convertJsonToSheet(Destination._buildConvertParams());
+    },
+
+    _buildConvertParams: function () {
+      return {
+        source:      App.state.source,
+        fields:      App.state.fields,
+        destination: App.state.destination,
+      };
+    },
+
+    _prefillName: function () {
+      const source = App.state.source;
+      if (!source) return;
+      const base = source.name.replace(/\.json$/i, '');
+      document.getElementById('dest-file-name').value = 'Export JSON — ' + base;
+    },
+
+    _onModeChange: function () {
+      const mode = document.querySelector('input[name="dest-mode"]:checked').value;
+      document.getElementById('dest-new-form').classList.toggle('hidden', mode !== 'new');
+      document.getElementById('dest-tab-form').classList.toggle('hidden', mode !== 'tab');
+      document.getElementById('card-new').classList.toggle('selected', mode === 'new');
+      document.getElementById('card-tab').classList.toggle('selected', mode === 'tab');
+      Destination._validate();
+    },
+
+    _validate: function () {
+      const config = Destination._buildConfig();
+      let valid = false;
+      if (config.mode === 'new') {
+        valid = config.fileName.length > 0;
+      } else if (config.mode === 'tab') {
+        valid = !!(config.spreadsheetId && config.tabName.length > 0);
+      }
+      if (valid) App.state.destination = config;
+      const btn = document.getElementById('btn-convert');
+      if (btn) btn.disabled = !valid;
+    },
+
+    _buildConfig: function () {
+      const mode = document.querySelector('input[name="dest-mode"]:checked').value;
+      if (mode === 'new') {
+        const name = (document.getElementById('dest-file-name').value || '').trim();
+        return { mode: 'new', fileName: name };
+      }
+      const tabNameEl = document.getElementById('dest-tab-name');
+      return {
+        mode: 'tab',
+        spreadsheetId: Destination._selectedSpreadsheet
+          ? Destination._selectedSpreadsheet.id : null,
+        tabName: tabNameEl ? (tabNameEl.value || '').trim() : '',
+      };
+    },
+
+    // ── Recherche Sheets (mode "Ajouter un onglet") ──
+
+    _selectedSpreadsheet: null,
+    _tabTimer: null,
+
+    _initTabSearch: function () {
+      document.getElementById('sheets-search-input')
+        .addEventListener('input', function () { Destination._onTabInput(this.value); });
+      document.getElementById('sheets-clear-btn')
+        .addEventListener('click', Destination._clearTabSelection);
+    },
+
+    _onTabInput: function (value) {
+      clearTimeout(Destination._tabTimer);
+      Destination._hideTabDropdown();
+      if (value.trim().length < 2) return;
+      // Déclenche la recherche après 300 ms d'inactivité (debounce)
+      Destination._tabTimer = setTimeout(function () {
+        Destination._searchSheets(value.trim());
+      }, 300);
+    },
+
+    _searchSheets: function (term) {
+      Destination._setTabSpinner(true);
+      google.script.run
+        .withSuccessHandler(Destination._renderSheetsResults)
+        .withFailureHandler(function () {
+          Destination._setTabSpinner(false);
+          Destination._showTabMessage('Impossible d\'accéder à votre Drive. Rechargez la page et réessayez.');
+        })
+        .searchDriveSheetsFiles(term);
+    },
+
+    _renderSheetsResults: function (results) {
+      Destination._setTabSpinner(false);
+      App.renderSearchResults(
+        'sheets-search-results',
+        results,
+        Destination._selectSheets,
+        function () { Destination._showTabMessage('Aucun fichier Sheets trouvé pour cette recherche.'); }
+      );
+    },
+
+    _selectSheets: function (file) {
+      Destination._selectedSpreadsheet = file;
+      document.getElementById('sheets-search-input').value = '';
+      Destination._hideTabDropdown();
+      document.getElementById('sheets-selected-name').textContent = file.name;
+      document.getElementById('sheets-selected').classList.remove('hidden');
+      const tabInput = document.getElementById('dest-tab-name');
+      if (!tabInput.value) tabInput.value = Destination._defaultTabName();
+      document.getElementById('tab-name-section').classList.remove('hidden');
+      // removeEventListener est no-op si absent — garantit exactement un listener
+      tabInput.removeEventListener('input', Destination._validate);
+      tabInput.addEventListener('input', Destination._validate);
+      Destination._validate();
+    },
+
+    _clearTabSelection: function () {
+      Destination._selectedSpreadsheet = null;
+      document.getElementById('sheets-search-input').value = '';
+      document.getElementById('sheets-selected').classList.add('hidden');
+      document.getElementById('sheets-selected-name').textContent = '';
+      document.getElementById('tab-name-section').classList.add('hidden');
+      document.getElementById('dest-tab-name').value = '';
+      Destination._validate();
+    },
+
+    _defaultTabName: function () {
+      const d   = new Date();
+      const pad = function (n) { return String(n).padStart(2, '0'); };
+      return 'Export_' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+             '_' + pad(d.getHours()) + 'h' + pad(d.getMinutes());
+    },
+
+    _hideTabDropdown: function () {
+      App.hideSearchDropdown('sheets-search-results', 'sheets-search-message');
+    },
+
+    _setTabSpinner: function (show) {
+      App.setSpinner('sheets-search-spinner', show);
+    },
+
+    _showTabMessage: function (msg) {
+      App.showSearchMessage('sheets-search-message', msg);
+    },
+  };
+</script>

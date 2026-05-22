@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSON → Sheets</title>
+  <?!= HtmlService.createHtmlOutputFromFile('Styles').getContent(); ?>
+</head>
+<body>
+  <div class="app-container">
+
+    <header class="app-header">
+      <h1>JSON → Sheets</h1>
+      <p>Transformez vos fichiers JSON en tableaux Google Sheets en quelques clics.</p>
+    </header>
+
+    <!-- Indicateur d'étapes -->
+    <nav class="steps-nav" aria-label="Étapes de conversion">
+      <div class="step-item active" id="step-nav-1">
+        <div class="step-circle">1</div>
+        <span class="step-label">Source</span>
+      </div>
+      <div class="step-connector" id="connector-1"></div>
+      <div class="step-item locked" id="step-nav-2">
+        <div class="step-circle">2</div>
+        <span class="step-label">Champs</span>
+      </div>
+      <div class="step-connector" id="connector-2"></div>
+      <div class="step-item locked" id="step-nav-3">
+        <div class="step-circle">3</div>
+        <span class="step-label">Destination</span>
+      </div>
+    </nav>
+
+    <!-- ── Panneau 1 : Source ── -->
+    <section class="step-panel active" id="panel-1" aria-labelledby="panel-1-title">
+      <h2 id="panel-1-title" class="panel-title">Choisissez votre fichier JSON</h2>
+      <p class="panel-desc">Indiquez le fichier JSON que vous souhaitez transformer en tableau.</p>
+
+      <!-- Recherche Drive -->
+      <div id="source-drive">
+        <label class="input-label" for="drive-search-input">Rechercher dans Google Drive</label>
+        <div class="search-wrapper">
+          <input type="text" id="drive-search-input" class="text-input"
+            placeholder="Tapez le nom de votre fichier JSON..."
+            autocomplete="off" aria-label="Recherche de fichier JSON dans Drive">
+          <span id="drive-search-spinner" class="input-spinner hidden"></span>
+        </div>
+        <ul id="drive-search-results" class="results-list hidden" role="listbox"></ul>
+        <div id="drive-search-message" class="search-message hidden"></div>
+        <div id="drive-selected" class="selected-file hidden">
+          <span class="selected-icon">✓</span>
+          <span id="drive-selected-name" class="selected-name"></span>
+          <button id="drive-clear-btn" class="clear-btn" aria-label="Effacer la sélection">×</button>
+        </div>
+      </div>
+
+      <div class="source-divider"><span>ou</span></div>
+
+      <!-- Upload local -->
+      <div id="source-local">
+        <input type="file" id="local-file-input" accept=".json" class="hidden"
+          aria-label="Choisir un fichier JSON depuis l'ordinateur">
+        <button id="local-file-btn" class="btn-secondary">📂 Depuis mon ordinateur</button>
+        <div id="local-error" class="error-message hidden"></div>
+        <div id="local-selected" class="selected-file hidden">
+          <span class="selected-icon">✓</span>
+          <span id="local-selected-name" class="selected-name"></span>
+          <button id="local-clear-btn" class="clear-btn" aria-label="Effacer la sélection">×</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Panneau 2 : Champs ── -->
+    <section class="step-panel locked" id="panel-2" aria-labelledby="panel-2-title">
+      <h2 id="panel-2-title" class="panel-title">Sélectionnez les champs à conserver</h2>
+      <p class="panel-desc locked-hint" id="panel-2-desc">
+        Disponible une fois le fichier source sélectionné.
+      </p>
+      <div id="analyse-loading" class="loading-row hidden">
+        <span class="loading-spinner"></span>
+        <span>Analyse du fichier en cours…</span>
+      </div>
+      <div id="analyse-error" class="error-message hidden"></div>
+      <div id="fields-list"></div>
+      <div id="fields-status" class="hidden"></div>
+      <button id="btn-to-step3" class="hidden">Continuer →</button>
+    </section>
+
+    <!-- ── Panneau 3 : Destination ── -->
+    <section class="step-panel locked" id="panel-3" aria-labelledby="panel-3-title">
+      <h2 id="panel-3-title" class="panel-title">Choisissez la destination</h2>
+      <p class="panel-desc locked-hint" id="panel-3-desc">
+        Disponible une fois les champs sélectionnés.
+      </p>
+      <div id="destination-options"></div>
+      <div id="conversion-zone"></div>
+    </section>
+
+  </div>
+
+  <?!= HtmlService.createHtmlOutputFromFile('App').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('DriveSearch').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('LocalUpload').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('AnalyseJson').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('FieldSelector').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('Destination').getContent(); ?>
+  <?!= HtmlService.createHtmlOutputFromFile('Progression').getContent(); ?>
+</body>
+</html>

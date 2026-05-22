@@ -16,6 +16,13 @@
 2. Declare the risk rail in your closing message (`Rail: green / amber / red`).
 3. If something was hard, unexpected, or slowed you down → run `/learn` (see below).
 
+### Code review (avant merge)
+
+Lancer `/review` pour une revue en 3 agents parallèles :
+- **Agent 1 — réutilisation** : cherche le code existant qui pourrait remplacer le nouveau ; flag les doublons
+- **Agent 2 — qualité** : état redondant, copy-paste, abstractions fuyantes, commentaires inutiles, wrappers triviaux
+- **Agent 3 — efficacité** : travail inutile, N+1, fuites mémoire, listeners accumulés, opérations trop larges
+
 ---
 
 ## Branching & commits

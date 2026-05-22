@@ -1,0 +1,37 @@
+<script>
+  /**
+   * AnalyseJson — déclenche l'extraction des champs de premier niveau du JSON.
+   * Appelle extractJsonFields() côté serveur pour les sources Drive ;
+   * passe le contenu directement pour les sources locales.
+   */
+  const AnalyseJson = {
+
+    run: function (source) {
+      AnalyseJson._setLoading(true);
+      const data = source.type === 'drive' ? source.id : source.content;
+      google.script.run
+        .withSuccessHandler(function (fields) {
+          AnalyseJson._setLoading(false);
+          FieldSelector.render(fields);
+        })
+        .withFailureHandler(function (error) {
+          AnalyseJson._setLoading(false);
+          AnalyseJson._onError(
+            error.message || 'Une erreur est survenue lors de la lecture du fichier. Réessayez.'
+          );
+        })
+        .extractJsonFields(source.type, data);
+    },
+
+    _setLoading: function (show) {
+      document.getElementById('analyse-loading').classList.toggle('hidden', !show);
+      document.getElementById('analyse-error').classList.add('hidden');
+    },
+
+    _onError: function (msg) {
+      document.getElementById('analyse-error').textContent = msg;
+      document.getElementById('analyse-error').classList.remove('hidden');
+      App.lockStep(2);
+    },
+  };
+</script>

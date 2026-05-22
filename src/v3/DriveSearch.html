@@ -1,0 +1,80 @@
+<script>
+  /**
+   * DriveSearch — recherche de fichiers JSON dans le Drive de l'utilisateur.
+   * Appelle searchDriveJsonFiles() côté serveur via google.script.run.
+   */
+  const DriveSearch = {
+    _timer: null,
+
+    init: function () {
+      document.getElementById('drive-search-input')
+        .addEventListener('input', function () { DriveSearch._onInput(this.value); });
+      document.getElementById('drive-clear-btn')
+        .addEventListener('click', DriveSearch._reset);
+    },
+
+    _onInput: function (value) {
+      clearTimeout(DriveSearch._timer);
+      DriveSearch._hideDropdown();
+      if (value.trim().length < 2) return;
+      // Déclenche la recherche après 300 ms d'inactivité (debounce)
+      DriveSearch._timer = setTimeout(function () {
+        DriveSearch._search(value.trim());
+      }, 300);
+    },
+
+    _search: function (term) {
+      DriveSearch._setSpinner(true);
+      google.script.run
+        .withSuccessHandler(DriveSearch._render)
+        .withFailureHandler(function () {
+          DriveSearch._setSpinner(false);
+          DriveSearch._showMessage('Impossible d\'accéder à votre Drive. Rechargez la page et réessayez.');
+        })
+        .searchDriveJsonFiles(term);
+    },
+
+    _render: function (results) {
+      DriveSearch._setSpinner(false);
+      App.renderSearchResults(
+        'drive-search-results',
+        results,
+        DriveSearch._select,
+        function () {
+          DriveSearch._showMessage('Aucun fichier JSON trouvé. Essayez l\'option "Depuis mon ordinateur" ci-dessous.');
+        }
+      );
+    },
+
+    _select: function (file) {
+      App.clearOtherSource('drive');
+      App.state.source = { type: 'drive', id: file.id, name: file.name };
+      document.getElementById('drive-search-input').value = '';
+      DriveSearch._hideDropdown();
+      document.getElementById('drive-selected-name').textContent = file.name;
+      document.getElementById('drive-selected').classList.remove('hidden');
+      App.completeStep(1);
+      App.unlockStep(2);
+      AnalyseJson.run(App.state.source);
+    },
+
+    _reset: function () {
+      App.state.source = null;
+      document.getElementById('drive-selected').classList.add('hidden');
+      document.getElementById('drive-selected-name').textContent = '';
+      App.resetDownstreamOf(2);
+    },
+
+    _hideDropdown: function () {
+      App.hideSearchDropdown('drive-search-results', 'drive-search-message');
+    },
+
+    _setSpinner: function (show) {
+      App.setSpinner('drive-search-spinner', show);
+    },
+
+    _showMessage: function (msg) {
+      App.showSearchMessage('drive-search-message', msg);
+    },
+  };
+</script>

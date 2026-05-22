@@ -1,0 +1,53 @@
+<script>
+  /**
+   * Progression — gère l'affichage pendant et après la conversion.
+   * Spinner animé pendant l'appel GAS (pas de streaming possible côté GAS).
+   * Résultat : bouton "Ouvrir le fichier" (succès) ou "Recommencer" (erreur).
+   */
+  const Progression = {
+
+    start: function () {
+      const zone = document.getElementById('progress-zone');
+      zone.innerHTML =
+        '<div class="spinner-row">' +
+          '<span class="spinner-lg"></span>' +
+          '<span>Conversion en cours…</span>' +
+        '</div>';
+      zone.classList.remove('hidden');
+    },
+
+    showSuccess: function (url) {
+      const zone = document.getElementById('progress-zone');
+      zone.innerHTML =
+        '<div class="result-card success">' +
+          '<p>✅ Votre fichier est prêt !</p>' +
+          '<button id="btn-open" class="btn-primary btn-open">Ouvrir le fichier →</button>' +
+        '</div>';
+      document.getElementById('btn-open')
+        .addEventListener('click', function () { window.open(url, '_blank'); });
+    },
+
+    /**
+     * Affiche le message d'erreur et le bouton "Recommencer".
+     * "Recommencer" recharge la page pour repartir de l'étape 1.
+     */
+    showError: function (msg) {
+      const zone = document.getElementById('progress-zone');
+      // Structure HTML sans le message — injecté via textContent pour éviter tout XSS.
+      zone.innerHTML =
+        '<div class="result-card error">' +
+          '<p id="error-msg"></p>' +
+          '<button id="btn-retry" class="btn-primary btn-retry">Recommencer</button>' +
+        '</div>';
+      document.getElementById('error-msg').textContent =
+        msg || 'La conversion a échoué. Réessayez ou contactez le support.';
+      document.getElementById('btn-retry')
+        .addEventListener('click', function () { window.location.reload(); });
+    },
+  };
+
+  // ── Initialisation ──
+  DriveSearch.init();
+  LocalUpload.init();
+  FieldSelector.init();
+</script>
