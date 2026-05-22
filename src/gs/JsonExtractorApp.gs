@@ -1,15 +1,73 @@
 /**
  * @file JsonExtractorApp.gs
  * Orchestrateur principal : coordonne ConfigService, JsonPathResolver, SheetWriter et ExtractionLogger.
+ * Mode standalone : le spreadsheet cible est ouvert via openById() à partir de TARGET_SHEET_ID.
  */
 
 class JsonExtractorApp {
   constructor() {
     this.ui = SpreadsheetApp.getUi();
-    this.spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     this.config = new ConfigService();
     this.resolver = new JsonPathResolver();
-    this.logger = new ExtractionLogger(this.spreadsheet);
+  }
+
+  /**
+   * Ouvre le spreadsheet cible configuré.
+   * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet|null}
+   */
+  _openTargetSpreadsheet() {
+    const targetId = this.config.getTargetSheetId();
+    if (!targetId) {
+      this.ui.alert('⚠️ Configuration', 'Veuillez d'abord configurer la feuille cible.', this.ui.ButtonSet.OK);
+      return null;
+    }
+    try {
+      return SpreadsheetApp.openById(targetId);
+    } catch (e) {
+      this.ui.alert(
+        '❌ Accès impossible',
+        'Impossible d'ouvrir la feuille cible. Vérifiez l'ID ou les droits d'accès.\n\nDétail : ' + e.message,
+        this.ui.ButtonSet.OK
+      );
+      return null;
+    }
+  }
+
+  configureTargetSheet() {
+    const response = this.ui.prompt(
+      'Configuration de la feuille cible',
+      'Collez le lien ou l'ID du Google Sheet dans lequel écrire les données :',
+      this.ui.ButtonSet.OK_CANCEL
+    );
+    if (response.getSelectedButton() !== this.ui.Button.OK) return;
+
+    const spreadsheetId = this.config.extractDriveFileId(response.getResponseText());
+    if (!spreadsheetId) {
+      this.ui.alert('❌ Erreur', 'Lien ou ID invalide.', this.ui.ButtonSet.OK);
+      return;
+    }
+
+    try {
+      const ss = SpreadsheetApp.openById(spreadsheetId);
+      this.config.setTargetSheetId(spreadsheetId);
+
+      const nameResponse = this.ui.prompt(
+        'Onglet cible (optionnel)',
+        `Nom de l'onglet dans lequel écrire les données.\nLaissez vide pour utiliser le premier onglet.\n\nOnglets disponibles : ${ss.getSheets().map(s => s.getName()).join(', ')}`,
+        this.ui.ButtonSet.OK_CANCEL
+      );
+      if (nameResponse.getSelectedButton() === this.ui.Button.OK) {
+        this.config.setTargetSheetName(nameResponse.getResponseText().trim());
+      }
+
+      this.ui.alert('✅ Feuille cible configurée', `Connecté à : ${ss.getName()}`, this.ui.ButtonSet.OK);
+    } catch (e) {
+      this.ui.alert(
+        '❌ Accès impossible',
+        'Impossible d'ouvrir ce Google Sheet.\n\nDétail : ' + e.message,
+        this.ui.ButtonSet.OK
+      );
+    }
   }
 
   configureSource() {
@@ -62,30 +120,6 @@ class JsonExtractorApp {
     );
   }
 
-  showCurrentConfiguration() {
-    const config = this.config.getCurrentConfiguration();
-
-    let fileName = '(non configuré)';
-    if (config.fileId) {
-      try {
-        fileName = DriveApp.getFileById(config.fileId).getName();
-      } catch (e) {
-        fileName = '(fichier inaccessible)';
-      }
-    }
-
-    this.ui.alert(
-      'Configuration actuelle',
-      [
-        `Fichier : ${fileName}`,
-        `File ID : ${config.fileId || '(non configuré)'}`,
-        `Chemin racine : ${config.rootPath || '(vide)'}`,
-        `Taille des lots d'écriture : ${config.chunkSize}`
-      ].join('\n'),
-      this.ui.ButtonSet.OK
-    );
-  }
-
   configureChunkSize() {
     const current = this.config.getChunkSize();
     const response = this.ui.prompt(
@@ -95,29 +129,72 @@ class JsonExtractorApp {
     );
     if (response.getSelectedButton() !== this.ui.Button.OK) return;
     const value = Number(response.getResponseText().trim());
-    if (!value || value <= 0) {
-      this.ui.alert('❌ Valeur invalide', 'Entrez un entier positif.', this.ui.ButtonSet.OK);
+    if (!Number.isInteger(value) || value <= 0) {
+      this.ui.alert('❌ Valeur invalide', 'Entrez un entier positif (ex : 500).', this.ui.ButtonSet.OK);
       return;
     }
     this.config.setChunkSize(value);
     this.ui.alert('✅ Enregistré', `Taille des lots : ${value}`, this.ui.ButtonSet.OK);
   }
 
+  showCurrentConfiguration() {
+    const config = this.config.getCurrentConfiguration();
+
+    let jsonFileName = '(non configuré)';
+    if (config.fileId) {
+      try {
+        jsonFileName = DriveApp.getFileById(config.fileId).getName();
+      } catch (e) {
+        jsonFileName = '(fichier inaccessible)';
+      }
+    }
+
+    let targetSheetName = '(non configuré)';
+    if (config.targetSheetId) {
+      try {
+        targetSheetName = SpreadsheetApp.openById(config.targetSheetId).getName();
+      } catch (e) {
+        targetSheetName = '(feuille inaccessible)';
+      }
+    }
+
+    this.ui.alert(
+      'Configuration actuelle',
+      [
+        `Source JSON : ${jsonFileName}`,
+        `File ID : ${config.fileId || '(non configuré)'}`,
+        `Chemin racine : ${config.rootPath || '(vide)'}`,
+        `Feuille cible : ${targetSheetName}`,
+        `Sheet ID : ${config.targetSheetId || '(non configuré)'}`,
+        `Onglet cible : ${config.targetSheetName || '(premier onglet)'}`,
+        `Taille des lots : ${config.chunkSize}`
+      ].join('\n'),
+      this.ui.ButtonSet.OK
+    );
+  }
+
   runExtraction() {
-    const sheet = this.spreadsheet.getActiveSheet();
+    const spreadsheet = this._openTargetSpreadsheet();
+    if (!spreadsheet) return;
+
+    const targetSheetName = this.config.getTargetSheetName();
+    const sheet = targetSheetName
+      ? (spreadsheet.getSheetByName(targetSheetName) || spreadsheet.getSheets()[0])
+      : spreadsheet.getSheets()[0];
 
     if (sheet.getName() === 'Logs') {
-      this.ui.alert('⚠️ Onglet invalide', 'L'extraction ne peut pas être lancée depuis l'onglet Logs.', this.ui.ButtonSet.OK);
+      this.ui.alert('⚠️ Onglet invalide', 'L'extraction ne peut pas cibler l'onglet Logs.', this.ui.ButtonSet.OK);
       return;
     }
 
-    const lock = LockService.getDocumentLock();
+    const lock = LockService.getScriptLock();
     if (!lock.tryLock(5000)) {
       this.ui.alert('⏳ Occupé', 'Une extraction est déjà en cours.', this.ui.ButtonSet.OK);
       return;
     }
 
     const startedAt = new Date();
+    const logger = new ExtractionLogger(spreadsheet);
     let fileId, rootPath, fileName = '';
 
     try {
@@ -146,7 +223,7 @@ class JsonExtractorApp {
         if (confirm !== this.ui.Button.OK) return;
       }
 
-      this.spreadsheet.toast('⏳ Lecture du fichier JSON…', 'Extracteur JSON', -1);
+      spreadsheet.toast('⏳ Lecture du fichier JSON…', 'Extracteur JSON', -1);
       const file = DriveApp.getFileById(fileId);
       fileName = file.getName();
       const jsonData = JSON.parse(file.getBlob().getDataAsString('UTF-8'));
@@ -159,16 +236,17 @@ class JsonExtractorApp {
         return;
       }
 
-      this.spreadsheet.toast(`⏳ Construction de ${dataArray.length} lignes…`, 'Extracteur JSON', -1);
+      spreadsheet.toast(`⏳ Construction de ${dataArray.length} lignes…`, 'Extracteur JSON', -1);
       const rows = this._buildRows(dataArray, paths);
 
       if (rows.length > 0) {
-        this.spreadsheet.toast('⏳ Écriture dans la feuille…', 'Extracteur JSON', -1);
-        writer.clearPreviousData(paths.length);
+        spreadsheet.toast('⏳ Écriture dans la feuille…', 'Extracteur JSON', -1);
+        writer.clearPreviousData(paths.length, this.config.getLastColumns());
         writer.writeRows(rows, this.config.getChunkSize());
         writer.autofitColumns(paths.length);
+        this.config.setLastColumns(paths.length);
 
-        this.logger.log({
+        logger.log({
           status: 'SUCCESS',
           fileName,
           sourceFileId: fileId,
@@ -180,12 +258,12 @@ class JsonExtractorApp {
           message: ''
         });
 
-        this.spreadsheet.toast(`✅ Extraction réussie : ${rows.length} lignes.`, 'Extracteur JSON', 5);
+        spreadsheet.toast(`✅ Extraction réussie : ${rows.length} lignes.`, 'Extracteur JSON', 5);
       } else {
         this.ui.alert('⚠️ Aucune ligne', 'Les chemins définis en ligne 1 n'ont retourné aucune valeur.', this.ui.ButtonSet.OK);
       }
     } catch (e) {
-      this.logger.log({
+      logger.log({
         status: 'ERROR',
         fileName,
         sourceFileId: fileId,
