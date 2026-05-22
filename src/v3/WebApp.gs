@@ -19,3 +19,23 @@ function doGet(e) {
     .setTitle('JSON → Sheets')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
+
+/**
+ * Recherche des fichiers JSON dans le Drive de l'utilisateur connecté.
+ * Appelée via google.script.run par le module DriveSearch côté client.
+ *
+ * @param {string} term - Terme de recherche (contenu dans le nom du fichier)
+ * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
+ */
+function searchDriveJsonFiles(term) {
+  const query = `title contains "${term}" and mimeType = "application/json" and trashed = false`;
+  const iterator = DriveApp.searchFiles(query);
+  const results = [];
+
+  while (iterator.hasNext() && results.length < 10) {
+    const file = iterator.next();
+    results.push({ id: file.getId(), name: file.getName() });
+  }
+
+  return results;
+}

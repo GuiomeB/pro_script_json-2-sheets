@@ -143,6 +143,39 @@
       font-size: 13px;
     }
 
+    /* ── US-02 : Drive Search ── */
+    .input-label { display: block; font-size: 13px; font-weight: 500; color: #3c4043; margin-bottom: 8px; }
+    .search-wrapper { position: relative; }
+    .text-input {
+      width: 100%; padding: 10px 36px 10px 12px;
+      border: 1px solid #dadce0; border-radius: 8px;
+      font-size: 14px; font-family: inherit; color: #202124;
+      outline: none; transition: border-color .15s;
+    }
+    .text-input:focus { border-color: #1a73e8; box-shadow: 0 0 0 2px #e8f0fe; }
+    .input-spinner {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      width: 16px; height: 16px;
+      border: 2px solid #dadce0; border-top-color: #1a73e8;
+      border-radius: 50%; animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
+    .results-list {
+      list-style: none; margin-top: 4px;
+      border: 1px solid #dadce0; border-radius: 8px;
+      background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.12);
+      max-height: 240px; overflow-y: auto;
+    }
+    .result-item { padding: 10px 14px; font-size: 14px; cursor: pointer; border-bottom: 1px solid #f1f3f4; transition: background .1s; }
+    .result-item:last-child { border-bottom: none; }
+    .result-item:hover { background: #f8f9fa; }
+    .search-message { font-size: 13px; color: #5f6368; margin-top: 8px; }
+    .selected-file { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #e6f4ea; border-radius: 8px; margin-top: 8px; }
+    .selected-icon { color: #34a853; font-weight: bold; }
+    .selected-name { flex: 1; font-size: 14px; color: #202124; }
+    .clear-btn { background: none; border: none; cursor: pointer; color: #5f6368; font-size: 18px; line-height: 1; padding: 0 4px; }
+    .clear-btn:hover { color: #202124; }
+
     /* ── Utilitaires ── */
     .hidden { display: none !important; }
 
@@ -186,10 +219,21 @@
       <h2 id="panel-1-title" class="panel-title">Choisissez votre fichier JSON</h2>
       <p class="panel-desc">Indiquez le fichier JSON que vous souhaitez transformer en tableau.</p>
 
-      <!-- US-02 : Recherche Drive (à brancher) -->
+      <!-- US-02 : Recherche Drive -->
       <div id="source-drive">
-        <div class="source-placeholder">
-          🔍 Recherche dans Drive — disponible avec US-02
+        <label class="input-label" for="drive-search-input">Rechercher dans Google Drive</label>
+        <div class="search-wrapper">
+          <input type="text" id="drive-search-input" class="text-input"
+            placeholder="Tapez le nom de votre fichier JSON..."
+            autocomplete="off" aria-label="Recherche de fichier JSON dans Drive">
+          <span id="drive-search-spinner" class="input-spinner hidden"></span>
+        </div>
+        <ul id="drive-search-results" class="results-list hidden" role="listbox"></ul>
+        <div id="drive-search-message" class="search-message hidden"></div>
+        <div id="drive-selected" class="selected-file hidden">
+          <span class="selected-icon">✓</span>
+          <span id="drive-selected-name" class="selected-name"></span>
+          <button id="drive-clear-btn" class="clear-btn" aria-label="Effacer la sélection">×</button>
         </div>
       </div>
 
@@ -278,6 +322,106 @@
         nav.classList.add('completed');
       },
     };
+
+    /**
+     * DriveSearch — recherche de fichiers JSON dans le Drive de l'utilisateur.
+     * Appelle searchDriveJsonFiles() côté serveur via google.script.run.
+     */
+    const DriveSearch = {
+      _timer: null,
+
+      init: function () {
+        document.getElementById('drive-search-input')
+          .addEventListener('input', function () { DriveSearch._onInput(this.value); });
+        document.getElementById('drive-clear-btn')
+          .addEventListener('click', DriveSearch._reset);
+      },
+
+      _onInput: function (value) {
+        clearTimeout(DriveSearch._timer);
+        DriveSearch._hideDropdown();
+        if (value.trim().length < 2) return;
+        // Déclenche la recherche après 300 ms d'inactivité (debounce)
+        DriveSearch._timer = setTimeout(function () {
+          DriveSearch._search(value.trim());
+        }, 300);
+      },
+
+      _search: function (term) {
+        DriveSearch._setSpinner(true);
+        google.script.run
+          .withSuccessHandler(DriveSearch._render)
+          .withFailureHandler(function () {
+            DriveSearch._setSpinner(false);
+            DriveSearch._showMessage(
+              'Impossible d\'accéder à votre Drive. Rechargez la page et réessayez.'
+            );
+          })
+          .searchDriveJsonFiles(term);
+      },
+
+      _render: function (results) {
+        DriveSearch._setSpinner(false);
+        const list = document.getElementById('drive-search-results');
+        list.innerHTML = '';
+        if (!results.length) {
+          DriveSearch._showMessage(
+            'Aucun fichier JSON trouvé. Essayez l\'option "Depuis mon ordinateur" ci-dessous.'
+          );
+          return;
+        }
+        results.forEach(function (file) {
+          const li = document.createElement('li');
+          li.className = 'result-item';
+          li.setAttribute('role', 'option');
+          li.textContent = file.name;
+          li.addEventListener('click', function () { DriveSearch._select(file); });
+          list.appendChild(li);
+        });
+        list.classList.remove('hidden');
+      },
+
+      _select: function (file) {
+        App.state.source = { type: 'drive', id: file.id, name: file.name };
+        document.getElementById('drive-search-input').value = '';
+        DriveSearch._hideDropdown();
+        document.getElementById('drive-selected-name').textContent = file.name;
+        document.getElementById('drive-selected').classList.remove('hidden');
+        App.completeStep(1);
+        App.unlockStep(2);
+        // TODO US-04a : AnalyseJson.run({ type: 'drive', id: file.id });
+      },
+
+      /** Réinitialise la sélection et re-verrouille l'étape 2. */
+      _reset: function () {
+        App.state.source = null;
+        document.getElementById('drive-selected').classList.add('hidden');
+        document.getElementById('drive-selected-name').textContent = '';
+        document.getElementById('panel-2').classList.add('locked');
+        const nav2 = document.getElementById('step-nav-2');
+        nav2.classList.remove('unlocked', 'completed');
+        nav2.classList.add('locked');
+        document.getElementById('connector-1').classList.remove('active');
+      },
+
+      _hideDropdown: function () {
+        document.getElementById('drive-search-results').classList.add('hidden');
+        document.getElementById('drive-search-message').classList.add('hidden');
+      },
+
+      _setSpinner: function (show) {
+        document.getElementById('drive-search-spinner').classList.toggle('hidden', !show);
+      },
+
+      _showMessage: function (msg) {
+        const el = document.getElementById('drive-search-message');
+        el.textContent = msg;
+        el.classList.remove('hidden');
+      },
+    };
+
+    // ── Initialisation ──
+    DriveSearch.init();
   </script>
 </body>
 </html>
