@@ -207,6 +207,20 @@
     .dest-hint { font-size: 12px; color: #5f6368; margin-top: 8px; }
     .btn-convert { margin-top: 8px; width: 100%; justify-content: center; padding: 12px 20px; font-size: 15px; }
 
+    /* ── US-08 : Progression et résultat ── */
+    .progress-zone { margin-top: 16px; }
+    .spinner-row { display: flex; align-items: center; gap: 12px; color: #5f6368; font-size: 14px; padding: 8px 0; }
+    .spinner-lg { width: 22px; height: 22px; border: 3px solid #dadce0; border-top-color: #1a73e8; border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+    .result-card { padding: 16px; border-radius: 10px; margin-top: 4px; }
+    .result-card.success { background: #e6f4ea; }
+    .result-card.success p { font-size: 15px; font-weight: 500; color: #137333; margin-bottom: 14px; }
+    .result-card.error { background: #fce8e6; }
+    .result-card.error p { font-size: 14px; color: #c5221f; margin-bottom: 14px; }
+    .btn-open  { background: #34a853; }
+    .btn-open:hover:not(:disabled)  { background: #2d8e46; }
+    .btn-retry { background: #fff; color: #1a73e8; border: 1px solid #1a73e8; }
+    .btn-retry:hover { background: #e8f0fe; }
+
     /* ── Utilitaires ── */
     .hidden { display: none !important; }
 
@@ -755,7 +769,8 @@
         document.getElementById('conversion-zone').innerHTML =
           '<button id="btn-convert" class="btn-primary btn-convert" disabled>' +
             'Convertir →' +
-          '</button>';
+          '</button>' +
+          '<div id="progress-zone" class="progress-zone hidden"></div>';
         document.getElementById('btn-convert')
           .addEventListener('click', Destination._onConvert);
       },
@@ -764,14 +779,14 @@
       _onConvert: function () {
         const btn = document.getElementById('btn-convert');
         btn.disabled = true;
-        // TODO US-08 : Progression.start();
+        Progression.start();
         google.script.run
           .withSuccessHandler(function (url) {
-            // TODO US-08 : Progression.showSuccess(url);
+            Progression.showSuccess(url);
           })
           .withFailureHandler(function (error) {
             btn.disabled = false;
-            // TODO US-08 : Progression.showError(error.message);
+            Progression.showError(error.message);
           })
           .convertJsonToSheet(Destination._buildConvertParams());
       },
@@ -937,6 +952,52 @@
         const el = document.getElementById('sheets-search-message');
         el.textContent = msg;
         el.classList.remove('hidden');
+      },
+    };
+
+    /**
+     * Progression — gère l'affichage pendant et après la conversion.
+     * Spinner animé pendant l'appel GAS (pas de streaming possible côté GAS).
+     * Résultat : bouton "Ouvrir le fichier" (succès) ou "Recommencer" (erreur).
+     */
+    const Progression = {
+
+      /** Affiche le spinner et masque le bouton Convertir. */
+      start: function () {
+        const zone = document.getElementById('progress-zone');
+        zone.innerHTML =
+          '<div class="spinner-row">' +
+            '<span class="spinner-lg"></span>' +
+            '<span>Conversion en cours…</span>' +
+          '</div>';
+        zone.classList.remove('hidden');
+      },
+
+      /** Affiche le message de succès et le bouton d'accès au fichier. */
+      showSuccess: function (url) {
+        const zone = document.getElementById('progress-zone');
+        zone.innerHTML =
+          '<div class="result-card success">' +
+            '<p>✅ Votre fichier est prêt !</p>' +
+            '<button id="btn-open" class="btn-primary btn-open">Ouvrir le fichier →</button>' +
+          '</div>';
+        document.getElementById('btn-open')
+          .addEventListener('click', function () { window.open(url, '_blank'); });
+      },
+
+      /**
+       * Affiche le message d'erreur et le bouton "Recommencer".
+       * "Recommencer" recharge la page pour repartir de l'étape 1.
+       */
+      showError: function (msg) {
+        const zone = document.getElementById('progress-zone');
+        zone.innerHTML =
+          '<div class="result-card error">' +
+            '<p>' + (msg || 'La conversion a échoué. Réessayez ou contactez le support.') + '</p>' +
+            '<button id="btn-retry" class="btn-primary btn-retry">Recommencer</button>' +
+          '</div>';
+        document.getElementById('btn-retry')
+          .addEventListener('click', function () { window.location.reload(); });
       },
     };
 
