@@ -1,20 +1,16 @@
 /**
  * @file ConfigService.gs
- * Persistance de la configuration via PropertiesService (script-scoped).
- * Mode standalone : pas de document lié, toutes les propriétés sont au niveau script.
+ * Persistance de la configuration via PropertiesService (document-scoped).
  */
 
 class ConfigService {
   constructor() {
-    this.properties = PropertiesService.getScriptProperties();
+    this.properties = PropertiesService.getDocumentProperties();
 
     this.keys = {
       FILE_ID: 'FILE_ID',
       ROOT_PATH: 'ROOT_PATH',
-      CHUNK_SIZE: 'CHUNK_SIZE',
-      LAST_COLUMNS: 'LAST_COLUMNS',
-      TARGET_SHEET_ID: 'TARGET_SHEET_ID',
-      TARGET_SHEET_NAME: 'TARGET_SHEET_NAME'
+      CHUNK_SIZE: 'CHUNK_SIZE'
     };
 
     this.defaults = {
@@ -56,50 +52,18 @@ class ConfigService {
     }
   }
 
-  /** @returns {number} nombre de colonnes de la dernière extraction réussie, 0 si aucune */
-  getLastColumns() {
-    return Number(this.properties.getProperty(this.keys.LAST_COLUMNS)) || 0;
-  }
-
-  /** @param {number} count */
-  setLastColumns(count) {
-    this.properties.setProperty(this.keys.LAST_COLUMNS, String(count));
-  }
-
-  /** @param {string} spreadsheetId */
-  setTargetSheetId(spreadsheetId) {
-    this.properties.setProperty(this.keys.TARGET_SHEET_ID, spreadsheetId);
-  }
-
-  /** @returns {string|null} */
-  getTargetSheetId() {
-    return this.properties.getProperty(this.keys.TARGET_SHEET_ID);
-  }
-
-  /** @param {string} sheetName — nom de l'onglet cible (vide = premier onglet) */
-  setTargetSheetName(sheetName) {
-    this.properties.setProperty(this.keys.TARGET_SHEET_NAME, sheetName || '');
-  }
-
-  /** @returns {string} */
-  getTargetSheetName() {
-    return this.properties.getProperty(this.keys.TARGET_SHEET_NAME) || '';
-  }
-
-  /** @returns {{ fileId, rootPath, chunkSize, targetSheetId, targetSheetName }} */
+  /** @returns {{ fileId: string, rootPath: string, chunkSize: number }} */
   getCurrentConfiguration() {
     return {
       fileId: this.getFileId(),
       rootPath: this.getRootPath(),
-      chunkSize: this.getChunkSize(),
-      targetSheetId: this.getTargetSheetId(),
-      targetSheetName: this.getTargetSheetName()
+      chunkSize: this.getChunkSize()
     };
   }
 
   /**
-   * Extrait un ID Drive/Sheets depuis une URL complète ou un ID brut.
-   * Tente d'abord le pattern /d/<ID> présent dans les URLs Drive et Sheets,
+   * Extrait un ID Drive depuis une URL complète ou un ID brut.
+   * Tente d'abord le pattern /d/<ID> présent dans les URLs Drive standards,
    * puis fall back sur le premier segment alphanumérique de 25+ caractères.
    * @param {string} input
    * @returns {string|null}
