@@ -95,8 +95,8 @@ class JsonExtractorApp {
     );
     if (response.getSelectedButton() !== this.ui.Button.OK) return;
     const value = Number(response.getResponseText().trim());
-    if (!value || value <= 0) {
-      this.ui.alert('❌ Valeur invalide', 'Entrez un entier positif.', this.ui.ButtonSet.OK);
+    if (!Number.isInteger(value) || value <= 0) {
+      this.ui.alert('❌ Valeur invalide', 'Entrez un entier positif (ex : 500).', this.ui.ButtonSet.OK);
       return;
     }
     this.config.setChunkSize(value);
@@ -164,9 +164,10 @@ class JsonExtractorApp {
 
       if (rows.length > 0) {
         this.spreadsheet.toast('⏳ Écriture dans la feuille…', 'Extracteur JSON', -1);
-        writer.clearPreviousData(paths.length);
+        writer.clearPreviousData(paths.length, this.config.getLastColumns());
         writer.writeRows(rows, this.config.getChunkSize());
         writer.autofitColumns(paths.length);
+        this.config.setLastColumns(paths.length);
 
         this.logger.log({
           status: 'SUCCESS',
