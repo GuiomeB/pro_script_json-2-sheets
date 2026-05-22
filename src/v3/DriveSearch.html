@@ -62,7 +62,7 @@
       App.state.source = null;
       document.getElementById('drive-selected').classList.add('hidden');
       document.getElementById('drive-selected-name').textContent = '';
-      App.lockStep(2);
+      App.resetDownstreamOf(2);
     },
 
     _hideDropdown: function () {

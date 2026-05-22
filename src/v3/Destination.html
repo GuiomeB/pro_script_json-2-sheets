@@ -7,6 +7,8 @@
 
     /** Injecte le formulaire destination et le bouton Convertir dans le DOM. */
     render: function () {
+      // Réinitialise l'état en mémoire : évite le décalage UI/JS si render() est rappelé.
+      Destination._selectedSpreadsheet = null;
       Destination._renderOptions();
       Destination._renderConvertBtn();
       Destination._prefillName();
@@ -49,7 +51,7 @@
           '</div>' +
           '<div id="tab-name-section" class="hidden" style="margin-top:16px">' +
             '<label class="input-label" for="dest-tab-name">Nom de l\'onglet</label>' +
-            '<input type="text" id="dest-tab-name" class="text-input" maxlength="100">' +
+            '<input type="text" id="dest-tab-name" class="text-input" maxlength="30">' +
             '<p class="dest-hint">💡 Ce nom peut être modifié avant de convertir.</p>' +
           '</div>' +
         '</div>';

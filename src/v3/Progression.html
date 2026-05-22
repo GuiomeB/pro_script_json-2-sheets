@@ -33,11 +33,14 @@
      */
     showError: function (msg) {
       const zone = document.getElementById('progress-zone');
+      // Structure HTML sans le message — injecté via textContent pour éviter tout XSS.
       zone.innerHTML =
         '<div class="result-card error">' +
-          '<p>' + (msg || 'La conversion a échoué. Réessayez ou contactez le support.') + '</p>' +
+          '<p id="error-msg"></p>' +
           '<button id="btn-retry" class="btn-primary btn-retry">Recommencer</button>' +
         '</div>';
+      document.getElementById('error-msg').textContent =
+        msg || 'La conversion a échoué. Réessayez ou contactez le support.';
       document.getElementById('btn-retry')
         .addEventListener('click', function () { window.location.reload(); });
     },

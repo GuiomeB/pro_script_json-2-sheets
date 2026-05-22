@@ -11,7 +11,9 @@
  * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
  */
 function _searchDriveFiles(term, mimeType) {
-  const query = `title contains "${term}" and mimeType = "${mimeType}" and trashed = false`;
+  // Échappe les backslashes puis les guillemets pour éviter une injection dans la query Drive.
+  const safeTerm = term.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const query = `title contains "${safeTerm}" and mimeType = "${mimeType}" and trashed = false`;
   const iterator = DriveApp.searchFiles(query);
   const results = [];
   while (iterator.hasNext() && results.length < 10) {

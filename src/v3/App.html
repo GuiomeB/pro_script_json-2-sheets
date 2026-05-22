@@ -62,6 +62,30 @@
     },
 
     /**
+     * Verrouille toutes les étapes à partir de stepNumber et vide l'état en cascade.
+     * À appeler quand la source est effacée (reset complet du wizard depuis step 2).
+     * @param {number} stepNumber - Première étape à verrouiller (2 ou 3)
+     */
+    resetDownstreamOf: function (stepNumber) {
+      for (let n = stepNumber; n <= 3; n++) App.lockStep(n);
+      if (stepNumber <= 2) {
+        App.state.fields = [];
+        App.state.destination = null;
+        document.getElementById('fields-list').innerHTML = '';
+        document.getElementById('fields-status').className = 'hidden';
+        document.getElementById('btn-to-step3').classList.add('hidden');
+        document.getElementById('panel-2-desc').classList.remove('hidden');
+        document.getElementById('destination-options').innerHTML = '';
+        document.getElementById('conversion-zone').innerHTML = '';
+      }
+      if (stepNumber === 3) {
+        App.state.destination = null;
+        document.getElementById('destination-options').innerHTML = '';
+        document.getElementById('conversion-zone').innerHTML = '';
+      }
+    },
+
+    /**
      * Efface l'affichage de la source non active.
      * Garantit l'exclusivité mutuelle entre Drive Search et Upload local.
      * @param {'drive'|'local'} keepType - Source à conserver

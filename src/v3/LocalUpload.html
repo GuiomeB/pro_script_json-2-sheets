@@ -56,7 +56,7 @@
       document.getElementById('local-selected').classList.add('hidden');
       document.getElementById('local-selected-name').textContent = '';
       LocalUpload._clearError();
-      App.lockStep(2);
+      App.resetDownstreamOf(2);
     },
 
     _showError: function (msg) {
