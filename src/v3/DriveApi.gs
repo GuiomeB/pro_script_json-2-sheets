@@ -5,20 +5,34 @@
  * Renommé depuis DriveSearch.gs — GAS interdit deux fichiers de même nom quelle que soit l'extension.
  */
 
+/** Nombre max de résultats remontés au client. */
+const _DRIVE_MAX_RESULTS = 10;
+/** Plafond de fichiers parcourus, pour borner la latence d'une recherche large. */
+const _DRIVE_MAX_SCAN = 200;
+
 /**
- * Recherche des fichiers dans le Drive selon un type MIME donné.
- * @param {string} term - Terme de recherche
- * @param {string} mimeType - Type MIME Drive à filtrer
- * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
+ * Échappe backslashes puis guillemets pour éviter une injection dans la query Drive.
+ * @param {string} term - Terme de recherche brut
+ * @returns {string} Terme échappé
  */
-function _searchDriveFiles(term, mimeType) {
-  // Échappe les backslashes puis les guillemets pour éviter une injection dans la query Drive.
-  const safeTerm = term.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  const query = `title contains "${safeTerm}" and mimeType = "${mimeType}" and trashed = false`;
+function _escapeDriveQuery(term) {
+  return term.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/**
+ * Exécute une query Drive et collecte jusqu'à _DRIVE_MAX_RESULTS fichiers.
+ * @param {string} query - Query Drive (syntaxe API v2)
+ * @param {(file: GoogleAppsScript.Drive.File) => boolean} [accept] - Filtre optionnel côté script
+ * @returns {{ id: string, name: string }[]} Fichiers retenus
+ */
+function _runDriveQuery(query, accept) {
   const iterator = DriveApp.searchFiles(query);
   const results = [];
-  while (iterator.hasNext() && results.length < 10) {
+  let scanned = 0;
+  while (iterator.hasNext() && results.length < _DRIVE_MAX_RESULTS && scanned < _DRIVE_MAX_SCAN) {
     const file = iterator.next();
+    scanned++;
+    if (accept && !accept(file)) continue;
     results.push({ id: file.getId(), name: file.getName() });
   }
   return results;
@@ -26,18 +40,26 @@ function _searchDriveFiles(term, mimeType) {
 
 /**
  * Recherche des fichiers JSON dans le Drive de l'utilisateur connecté.
+ * Filtre sur l'extension .json plutôt que le MIME : Drive stocke les .json
+ * tantôt en application/json, tantôt en text/plain — le MIME seul en manque.
  * @param {string} term - Terme de recherche
  * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
  */
 function searchDriveJsonFiles(term) {
-  return _searchDriveFiles(term, 'application/json');
+  const query = `title contains "${_escapeDriveQuery(term)}" and trashed = false`;
+  return _runDriveQuery(query, function (file) {
+    return /\.json$/i.test(file.getName());
+  });
 }
 
 /**
  * Recherche des fichiers Google Sheets dans le Drive de l'utilisateur connecté.
+ * Le MIME natif Google est fiable — pas de filtre d'extension nécessaire.
  * @param {string} term - Terme de recherche
  * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
  */
 function searchDriveSheetsFiles(term) {
-  return _searchDriveFiles(term, 'application/vnd.google-apps.spreadsheet');
+  const query = `title contains "${_escapeDriveQuery(term)}" and ` +
+    `mimeType = "application/vnd.google-apps.spreadsheet" and trashed = false`;
+  return _runDriveQuery(query);
 }
