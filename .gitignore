@@ -1,1 +1,6 @@
 .DS_Store
+
+# clasp — contient le scriptId (identifiant privé du projet GAS)
+.clasp.json
+# OAuth credentials globales clasp (normalement dans ~/.clasprc.json, par sécurité)
+.clasprc.json
