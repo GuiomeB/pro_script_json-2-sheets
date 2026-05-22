@@ -1,11 +1,11 @@
 {
   "name": "json-2-sheets",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "private": true,
   "description": "Conversion JSON → Google Sheets (Google Apps Script). v3 = Web App (src/v3), v2 = script lié au spreadsheet (src/gs).",
   "scripts": {
     "login": "clasp login",
-    "push": "clasp push -f",
+    "push": "node scripts/inject-version.mjs && clasp push -f",
     "watch": "clasp push -w",
     "pull": "clasp pull",
     "status": "clasp status",

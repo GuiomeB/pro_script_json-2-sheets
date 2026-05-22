@@ -22,6 +22,6 @@ function doGet(e) {
   // createTemplateFromFile().evaluate() évalue les scriptlets <?!= ?> qui injectent
   // Styles.html et les modules JS. createHtmlOutputFromFile servirait le fichier brut.
   return HtmlService.createTemplateFromFile('index').evaluate()
-    .setTitle('JSON → Sheets')
+    .setTitle('Json 2 Sheets')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
