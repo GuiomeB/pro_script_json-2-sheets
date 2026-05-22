@@ -176,6 +176,10 @@
     .clear-btn { background: none; border: none; cursor: pointer; color: #5f6368; font-size: 18px; line-height: 1; padding: 0 4px; }
     .clear-btn:hover { color: #202124; }
 
+    /* ── US-04a : Analyse JSON ── */
+    .loading-row { display: flex; align-items: center; gap: 10px; color: #5f6368; font-size: 14px; padding: 4px 0; }
+    .loading-spinner { width: 16px; height: 16px; border: 2px solid #dadce0; border-top-color: #1a73e8; border-radius: 50%; animation: spin .6s linear infinite; flex-shrink: 0; }
+
     /* ── US-03 : Upload local ── */
     .btn-secondary { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border: 1px solid #dadce0; border-radius: 8px; background: #fff; color: #1a73e8; font-size: 14px; font-family: inherit; cursor: pointer; transition: background .15s, border-color .15s; }
     .btn-secondary:hover { background: #f8f9fa; border-color: #1a73e8; }
@@ -267,6 +271,13 @@
       <p class="panel-desc locked-hint" id="panel-2-desc">
         Disponible une fois le fichier source sélectionné.
       </p>
+      <!-- US-04a : état d'analyse -->
+      <div id="analyse-loading" class="loading-row hidden">
+        <span class="loading-spinner"></span>
+        <span>Analyse du fichier en cours…</span>
+      </div>
+      <div id="analyse-error" class="error-message hidden"></div>
+
       <!-- US-04b : liste de checkboxes (à brancher) -->
       <div id="fields-list"></div>
       <div id="fields-status" class="hidden"></div>
@@ -420,7 +431,7 @@
         document.getElementById('drive-selected').classList.remove('hidden');
         App.completeStep(1);
         App.unlockStep(2);
-        // TODO US-04a : AnalyseJson.run({ type: 'drive', id: file.id });
+        AnalyseJson.run(App.state.source);
       },
 
       /** Réinitialise la sélection et re-verrouille l'étape 2. */
@@ -497,7 +508,7 @@
           document.getElementById('local-selected').classList.remove('hidden');
           App.completeStep(1);
           App.unlockStep(2);
-          // TODO US-04a : AnalyseJson.run({ type: 'local', content: content });
+          AnalyseJson.run(App.state.source);
         };
         reader.readAsText(file);
       },
@@ -524,6 +535,47 @@
 
       _clearError: function () {
         document.getElementById('local-error').classList.add('hidden');
+      },
+    };
+
+    /**
+     * AnalyseJson — déclenche l'extraction des champs de premier niveau du JSON.
+     * Appelle extractJsonFields() côté serveur pour les sources Drive ;
+     * passe le contenu directement pour les sources locales.
+     */
+    const AnalyseJson = {
+
+      run: function (source) {
+        AnalyseJson._setLoading(true);
+        const data = source.type === 'drive' ? source.id : source.content;
+        google.script.run
+          .withSuccessHandler(function (fields) {
+            AnalyseJson._setLoading(false);
+            // TODO US-04b : FieldSelector.render(fields);
+          })
+          .withFailureHandler(function (error) {
+            AnalyseJson._setLoading(false);
+            AnalyseJson._onError(
+              error.message || 'Une erreur est survenue lors de la lecture du fichier. Réessayez.'
+            );
+          })
+          .extractJsonFields(source.type, data);
+      },
+
+      _setLoading: function (show) {
+        document.getElementById('analyse-loading').classList.toggle('hidden', !show);
+        document.getElementById('analyse-error').classList.add('hidden');
+      },
+
+      /** Affiche l'erreur dans panel 2 et re-verrouille l'étape. */
+      _onError: function (msg) {
+        document.getElementById('analyse-error').textContent = msg;
+        document.getElementById('analyse-error').classList.remove('hidden');
+        document.getElementById('panel-2').classList.add('locked');
+        const nav2 = document.getElementById('step-nav-2');
+        nav2.classList.remove('unlocked', 'completed');
+        nav2.classList.add('locked');
+        document.getElementById('connector-1').classList.remove('active');
       },
     };
 
