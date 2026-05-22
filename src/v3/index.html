@@ -398,6 +398,59 @@
           DriveSearch._hideDropdown();
         }
       },
+
+      /**
+       * Verrouille un panneau — inverse symétrique de unlockStep.
+       * @param {number} stepNumber
+       */
+      lockStep: function (stepNumber) {
+        const panel     = document.getElementById('panel-'     + stepNumber);
+        const nav       = document.getElementById('step-nav-'  + stepNumber);
+        const connector = document.getElementById('connector-' + (stepNumber - 1));
+        if (panel) panel.classList.add('locked');
+        if (nav) {
+          nav.classList.remove('unlocked', 'completed');
+          nav.classList.add('locked');
+        }
+        if (connector) connector.classList.remove('active');
+      },
+
+      /**
+       * Affiche une liste de résultats Drive dans un <ul> existant.
+       * @param {string} listId
+       * @param {{ id: string, name: string }[]} results
+       * @param {function} onSelect  Appelée avec l'objet fichier sélectionné
+       * @param {function} onEmpty   Appelée quand results est vide
+       */
+      renderSearchResults: function (listId, results, onSelect, onEmpty) {
+        const list = document.getElementById(listId);
+        list.innerHTML = '';
+        if (!results.length) { onEmpty(); return; }
+        results.forEach(function (file) {
+          const li = document.createElement('li');
+          li.className = 'result-item';
+          li.setAttribute('role', 'option');
+          li.textContent = file.name;
+          li.addEventListener('click', function () { onSelect(file); });
+          list.appendChild(li);
+        });
+        list.classList.remove('hidden');
+      },
+
+      hideSearchDropdown: function (resultsId, messageId) {
+        document.getElementById(resultsId).classList.add('hidden');
+        document.getElementById(messageId).classList.add('hidden');
+      },
+
+      showSearchMessage: function (messageId, msg) {
+        const el = document.getElementById(messageId);
+        el.textContent = msg;
+        el.classList.remove('hidden');
+      },
+
+      setSpinner: function (spinnerId, show) {
+        document.getElementById(spinnerId).classList.toggle('hidden', !show);
+      },
     };
 
     /**
@@ -439,23 +492,14 @@
 
       _render: function (results) {
         DriveSearch._setSpinner(false);
-        const list = document.getElementById('drive-search-results');
-        list.innerHTML = '';
-        if (!results.length) {
-          DriveSearch._showMessage(
-            'Aucun fichier JSON trouvé. Essayez l\'option "Depuis mon ordinateur" ci-dessous.'
-          );
-          return;
-        }
-        results.forEach(function (file) {
-          const li = document.createElement('li');
-          li.className = 'result-item';
-          li.setAttribute('role', 'option');
-          li.textContent = file.name;
-          li.addEventListener('click', function () { DriveSearch._select(file); });
-          list.appendChild(li);
-        });
-        list.classList.remove('hidden');
+        App.renderSearchResults(
+          'drive-search-results',
+          results,
+          DriveSearch._select,
+          function () {
+            DriveSearch._showMessage('Aucun fichier JSON trouvé. Essayez l\'option "Depuis mon ordinateur" ci-dessous.');
+          }
+        );
       },
 
       _select: function (file) {
@@ -470,31 +514,23 @@
         AnalyseJson.run(App.state.source);
       },
 
-      /** Réinitialise la sélection et re-verrouille l'étape 2. */
       _reset: function () {
         App.state.source = null;
         document.getElementById('drive-selected').classList.add('hidden');
         document.getElementById('drive-selected-name').textContent = '';
-        document.getElementById('panel-2').classList.add('locked');
-        const nav2 = document.getElementById('step-nav-2');
-        nav2.classList.remove('unlocked', 'completed');
-        nav2.classList.add('locked');
-        document.getElementById('connector-1').classList.remove('active');
+        App.lockStep(2);
       },
 
       _hideDropdown: function () {
-        document.getElementById('drive-search-results').classList.add('hidden');
-        document.getElementById('drive-search-message').classList.add('hidden');
+        App.hideSearchDropdown('drive-search-results', 'drive-search-message');
       },
 
       _setSpinner: function (show) {
-        document.getElementById('drive-search-spinner').classList.toggle('hidden', !show);
+        App.setSpinner('drive-search-spinner', show);
       },
 
       _showMessage: function (msg) {
-        const el = document.getElementById('drive-search-message');
-        el.textContent = msg;
-        el.classList.remove('hidden');
+        App.showSearchMessage('drive-search-message', msg);
       },
     };
 
@@ -549,18 +585,13 @@
         reader.readAsText(file);
       },
 
-      /** Réinitialise la sélection et re-verrouille l'étape 2. */
       _reset: function () {
         App.state.source = null;
         document.getElementById('local-file-input').value = '';
         document.getElementById('local-selected').classList.add('hidden');
         document.getElementById('local-selected-name').textContent = '';
         LocalUpload._clearError();
-        document.getElementById('panel-2').classList.add('locked');
-        const nav2 = document.getElementById('step-nav-2');
-        nav2.classList.remove('unlocked', 'completed');
-        nav2.classList.add('locked');
-        document.getElementById('connector-1').classList.remove('active');
+        App.lockStep(2);
       },
 
       _showError: function (msg) {
@@ -603,15 +634,10 @@
         document.getElementById('analyse-error').classList.add('hidden');
       },
 
-      /** Affiche l'erreur dans panel 2 et re-verrouille l'étape. */
       _onError: function (msg) {
         document.getElementById('analyse-error').textContent = msg;
         document.getElementById('analyse-error').classList.remove('hidden');
-        document.getElementById('panel-2').classList.add('locked');
-        const nav2 = document.getElementById('step-nav-2');
-        nav2.classList.remove('unlocked', 'completed');
-        nav2.classList.add('locked');
-        document.getElementById('connector-1').classList.remove('active');
+        App.lockStep(2);
       },
     };
 
@@ -650,7 +676,7 @@
           cb.value = field;
           cb.checked = true;
           cb.className = 'field-checkbox';
-          cb.addEventListener('change', FieldSelector._onToggle);
+          cb.addEventListener('change', FieldSelector._updateCounter);
 
           const lbl = document.createElement('label');
           lbl.htmlFor = 'field-' + field;
@@ -662,17 +688,12 @@
           list.appendChild(item);
         });
 
-        // Active le compteur et le bouton
         const counter = document.getElementById('fields-status');
         counter.className = 'fields-counter';
         const btn = document.getElementById('btn-to-step3');
         btn.classList.add('btn-primary');
         btn.classList.remove('hidden');
 
-        FieldSelector._updateCounter();
-      },
-
-      _onToggle: function () {
         FieldSelector._updateCounter();
       },
 
@@ -791,13 +812,9 @@
           .convertJsonToSheet(Destination._buildConvertParams());
       },
 
-      /** Construit l'objet params transmis à convertJsonToSheet(). */
       _buildConvertParams: function () {
-        const src = App.state.source;
         return {
-          source: src.type === 'drive'
-            ? { type: 'drive', id: src.id }
-            : { type: 'local', content: src.content },
+          source:      App.state.source,
           fields:      App.state.fields,
           destination: App.state.destination,
         };
@@ -820,20 +837,15 @@
         Destination._validate();
       },
 
-      /** Active/désactive le bouton Convertir et synchronise App.state.destination. */
       _validate: function () {
-        const mode = document.querySelector('input[name="dest-mode"]:checked').value;
+        const config = Destination._buildConfig();
         let valid = false;
-        if (mode === 'new') {
-          const name = (document.getElementById('dest-file-name').value || '').trim();
-          valid = name.length > 0;
+        if (config.mode === 'new') {
+          valid = config.fileName.length > 0;
+        } else if (config.mode === 'tab') {
+          valid = !!(config.spreadsheetId && config.tabName.length > 0);
         }
-        if (mode === 'tab') {
-          const tabNameEl = document.getElementById('dest-tab-name');
-          const tabName   = tabNameEl ? tabNameEl.value.trim() : '';
-          valid = !!(Destination._selectedSpreadsheet && tabName.length > 0);
-        }
-        App.state.destination = Destination._buildConfig();
+        if (valid) App.state.destination = config;
         const btn = document.getElementById('btn-convert');
         if (btn) btn.disabled = !valid;
       },
@@ -889,21 +901,12 @@
 
       _renderSheetsResults: function (results) {
         Destination._setTabSpinner(false);
-        const list = document.getElementById('sheets-search-results');
-        list.innerHTML = '';
-        if (!results.length) {
-          Destination._showTabMessage('Aucun fichier Sheets trouvé pour cette recherche.');
-          return;
-        }
-        results.forEach(function (file) {
-          const li = document.createElement('li');
-          li.className = 'result-item';
-          li.setAttribute('role', 'option');
-          li.textContent = file.name;
-          li.addEventListener('click', function () { Destination._selectSheets(file); });
-          list.appendChild(li);
-        });
-        list.classList.remove('hidden');
+        App.renderSearchResults(
+          'sheets-search-results',
+          results,
+          Destination._selectSheets,
+          function () { Destination._showTabMessage('Aucun fichier Sheets trouvé pour cette recherche.'); }
+        );
       },
 
       _selectSheets: function (file) {
@@ -912,11 +915,12 @@
         Destination._hideTabDropdown();
         document.getElementById('sheets-selected-name').textContent = file.name;
         document.getElementById('sheets-selected').classList.remove('hidden');
-        // Affiche le champ nom d'onglet avec l'horodatage par défaut
         const section  = document.getElementById('tab-name-section');
         const tabInput = document.getElementById('dest-tab-name');
         if (!tabInput.value) tabInput.value = Destination._defaultTabName();
         section.classList.remove('hidden');
+        // removeEventListener est no-op si absent — garantit exactement un listener
+        tabInput.removeEventListener('input', Destination._validate);
         tabInput.addEventListener('input', Destination._validate);
         Destination._validate();
       },
@@ -940,18 +944,15 @@
       },
 
       _hideTabDropdown: function () {
-        document.getElementById('sheets-search-results').classList.add('hidden');
-        document.getElementById('sheets-search-message').classList.add('hidden');
+        App.hideSearchDropdown('sheets-search-results', 'sheets-search-message');
       },
 
       _setTabSpinner: function (show) {
-        document.getElementById('sheets-search-spinner').classList.toggle('hidden', !show);
+        App.setSpinner('sheets-search-spinner', show);
       },
 
       _showTabMessage: function (msg) {
-        const el = document.getElementById('sheets-search-message');
-        el.textContent = msg;
-        el.classList.remove('hidden');
+        App.showSearchMessage('sheets-search-message', msg);
       },
     };
 

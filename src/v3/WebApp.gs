@@ -86,20 +86,6 @@ function _extractKeys(parsed) {
 }
 
 /**
- * Recherche des fichiers JSON dans le Drive de l'utilisateur connecté.
- * Appelée via google.script.run par le module DriveSearch côté client.
- *
- * @param {string} term - Terme de recherche (contenu dans le nom du fichier)
- * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
- */
-/**
- * Recherche des fichiers Google Sheets dans le Drive de l'utilisateur connecté.
- * Appelée via google.script.run par le module Destination (mode "Ajouter un onglet").
- *
- * @param {string} term - Terme de recherche (contenu dans le nom du fichier)
- * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
- */
-/**
  * Convertit un fichier JSON en tableau Google Sheets.
  * Crée le fichier ou l'onglet cible selon la destination, écrit les données par lots.
  *
@@ -111,10 +97,8 @@ function convertJsonToSheet(params) {
   const { sheet, url } = _sheetPrepareTarget(params.destination);
   const fields      = params.fields;
 
-  // Ligne 1 : en-têtes
   sheet.getRange(1, 1, 1, fields.length).setValues([fields]);
 
-  // Lignes de données (par lots pour éviter les timeouts GAS)
   if (data.length > 0) {
     _sheetWriteBatches(sheet, data, fields);
   }
@@ -143,7 +127,6 @@ function _sheetPrepareTarget(destination) {
     return { sheet: ss.getActiveSheet(), url: ss.getUrl() };
   }
 
-  // mode 'tab' — ouvre le fichier existant
   let ss;
   try {
     ss = SpreadsheetApp.openById(destination.spreadsheetId);
@@ -192,28 +175,37 @@ function _sheetWriteBatches(sheet, data, fields) {
   }
 }
 
-function searchDriveSheetsFiles(term) {
-  const query = `title contains "${term}" and mimeType = "application/vnd.google-apps.spreadsheet" and trashed = false`;
+/**
+ * Recherche des fichiers dans le Drive selon un type MIME donné.
+ * @param {string} term - Terme de recherche
+ * @param {string} mimeType - Type MIME Drive à filtrer
+ * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
+ */
+function _searchDriveFiles(term, mimeType) {
+  const query = `title contains "${term}" and mimeType = "${mimeType}" and trashed = false`;
   const iterator = DriveApp.searchFiles(query);
   const results = [];
-
   while (iterator.hasNext() && results.length < 10) {
     const file = iterator.next();
     results.push({ id: file.getId(), name: file.getName() });
   }
-
   return results;
 }
 
+/**
+ * Recherche des fichiers JSON dans le Drive de l'utilisateur connecté.
+ * @param {string} term - Terme de recherche
+ * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
+ */
 function searchDriveJsonFiles(term) {
-  const query = `title contains "${term}" and mimeType = "application/json" and trashed = false`;
-  const iterator = DriveApp.searchFiles(query);
-  const results = [];
+  return _searchDriveFiles(term, 'application/json');
+}
 
-  while (iterator.hasNext() && results.length < 10) {
-    const file = iterator.next();
-    results.push({ id: file.getId(), name: file.getName() });
-  }
-
-  return results;
+/**
+ * Recherche des fichiers Google Sheets dans le Drive de l'utilisateur connecté.
+ * @param {string} term - Terme de recherche
+ * @returns {{ id: string, name: string }[]} Fichiers trouvés, max 10 résultats
+ */
+function searchDriveSheetsFiles(term) {
+  return _searchDriveFiles(term, 'application/vnd.google-apps.spreadsheet');
 }
