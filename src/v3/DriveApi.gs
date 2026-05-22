@@ -1,7 +1,8 @@
 /**
- * @file DriveSearch.gs
+ * @file DriveApi.gs
  * Recherche de fichiers dans le Drive de l'utilisateur connecté.
  * Appelées via google.script.run depuis les modules DriveSearch et Destination (client).
+ * Renommé depuis DriveSearch.gs — GAS interdit deux fichiers de même nom quelle que soit l'extension.
  */
 
 /**

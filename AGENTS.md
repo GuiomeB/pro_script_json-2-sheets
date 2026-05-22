@@ -53,11 +53,13 @@ Never load large documents "just in case".
 | Fichier | Rôle | Règle |
 |---|---|---|
 | `WebApp.gs` | `doGet()` uniquement — point d'entrée | < 15 lignes, aucune logique métier |
-| `*.gs` | Un fichier par domaine métier | `JsonParser.gs`, `SheetWriter.gs`, `DriveSearch.gs` |
+| `*.gs` | Un fichier par domaine métier | `JsonParser.gs`, `SheetWriter.gs`, `DriveApi.gs` |
 | `index.html` | Structure HTML + scriptlets d'assemblage | Aucun CSS ni JS inline |
 | `Styles.html` | `<style>` uniquement | Pas de DOCTYPE |
 | `App.html` | Objet `App` global (state + helpers UI partagés) | |
 | `*.html` | Un fragment par module JS | PascalCase = nom de l'objet JS dedans |
+
+> ⚠️ **Contrainte GAS** : deux fichiers ne peuvent pas partager le même nom, même avec des extensions différentes (`.gs` vs `.html`). Si un module JS client porte le même nom qu'un fichier `.gs`, renommer le `.gs` en ajoutant un suffixe sémantique (`DriveSearch.html` + `DriveApi.gs`).
 
 ### Règles d'assemblage
 
