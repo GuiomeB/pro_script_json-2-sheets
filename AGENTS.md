@@ -1,5 +1,7 @@
 # AGENTS.md — JSON_2_Sheets
 
+> Doctrine: v4 figée — projet en maintenance ; migrer vers v5 (blueprint simple-ai-harness-blueprint) avant toute réactivation.
+
 ## The 4 Karpathy Rules (override everything else in conflict)
 
 1. **Don't assume. Don't hide confusion. Surface trade-offs.** Ambiguity → ask before coding.
